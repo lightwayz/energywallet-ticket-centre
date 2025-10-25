@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
     signInWithEmailAndPassword,
     setPersistence,
@@ -108,7 +108,7 @@ export default function LoginForm() {
                 transition={{ duration: 0.5 }}
                 className="bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl w-full max-w-sm space-y-4 border border-gray-800"
             >
-                <h1 className="text-2xl font-bold text-center text-energy-orange">Energywallet Login</h1>
+                <h1 className="text-2xl font-bold text-center text-energy-orange">Login</h1>
 
                 <input
                     type="email"
@@ -139,6 +139,15 @@ export default function LoginForm() {
                     Remember me
                 </label>
 
+                {/* Forget Password */}
+                <label className="flex items-center gap-2 text-sm text-gray-400">
+                    <input
+                        onChange={(e) => setRemember(e.target.checked)}
+                        className="w-4 h-4 accent-energy-orange"
+                    />
+                    Forget password?
+                </label>
+
                 {error && <p className="text-red-400 text-sm">{error}</p>}
 
                 <motion.button
@@ -148,7 +157,7 @@ export default function LoginForm() {
                     disabled={loading}
                     className="w-full bg-energy-orange text-energy-black py-2 rounded-lg font-semibold hover:bg-orange-400 transition"
                 >
-                    {loading ? "Logging in..." : "Login"}
+                    {loading ? "Logging in..." : "Submit"}
                 </motion.button>
 
                 <div className="flex items-center gap-3">

@@ -14,7 +14,6 @@ export default function Header() {
         <header className="relative py-10 bg-energy-black text-white flex flex-col items-center justify-center text-center overflow-hidden">
             {/* 🔹 Top Navigation Bar */}
             <div className="absolute top-0 left-0 w-full flex justify-between items-center px-6 py-4 bg-energy-dark/60 backdrop-blur-md">
-                <h1 className="text-xl font-bold text-energy-orange">⚡ Energywallet</h1>
 
                 {user ? (
                     <div className="flex items-center gap-3">
@@ -58,7 +57,7 @@ export default function Header() {
                         src={logo}
                         alt="EnergyWallet Logo"
                         width={200}
-                        // height={80}
+                        height={80}
                         style={{ height: "auto" }}
                         priority
                         className="w-32 h-auto"
@@ -121,7 +120,7 @@ export default function Header() {
             >
                 <h1 className="text-xl md:text-2xl font-bold tracking-widest">
                     <span className="text-[#FFA500]">TICKET</span>{" "}
-                    <span className="text-[#D3D3D3]">CENTRE</span>
+                    <span className="text-[#FFA500]">CENTRE</span>
                 </h1>
             </motion.div>
         </header>
