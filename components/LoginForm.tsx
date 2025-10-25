@@ -8,6 +8,7 @@ import {
     browserSessionPersistence,
     GoogleAuthProvider,
     signInWithPopup,
+    sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase"; // db = Firestore client instance
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
@@ -128,25 +129,39 @@ export default function LoginForm() {
                     className="w-full px-4 py-2 rounded-lg bg-transparent border border-gray-700 focus:outline-none"
                 />
 
-                {/* Remember me */}
-                <label className="flex items-center gap-2 text-sm text-gray-400">
-                    <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(e) => setRemember(e.target.checked)}
-                        className="w-4 h-4 accent-energy-orange"
-                    />
-                    Remember me
-                </label>
+                {/* Remember me and Forgot password in one line */}
+                <div className="flex items-center justify-between text-sm text-gray-400">
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={remember}
+                            onChange={(e) => setRemember(e.target.checked)}
+                            className="w-4 h-4 accent-energy-orange"
+                        />
+                        Remember me
+                    </label>
 
-                {/* Forget Password */}
-                <label className="flex items-center gap-2 text-sm text-gray-400">
-                    <input
-                        onChange={(e) => setRemember(e.target.checked)}
-                        className="w-4 h-4 accent-energy-orange"
-                    />
-                    Forget password?
-                </label>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            if (!email) {
+                                setError("Please enter your email first to reset your password.");
+                                return;
+                            }
+                            try {
+                                await sendPasswordResetEmail(auth, email);
+                                setError(""); // clear any previous errors
+                                alert("Password reset link sent to your email.");
+                            } catch (err: any) {
+                                console.error(err);
+                                setError("Failed to send reset email. Check your email address.");
+                            }
+                        }}
+                        className="text-energy-orange hover:underline"
+                    >
+                        Forgot password?
+                    </button>
+                </div>
 
                 {error && <p className="text-red-400 text-sm">{error}</p>}
 
