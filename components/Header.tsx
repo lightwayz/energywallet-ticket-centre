@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import logo from "@/lib/img/Energywallet logo.png";
+import logo from "@/lib/img/Energy_Wallet_logo_ICON[1].png";
 import { useAuth } from "@/lib/authContext";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -17,7 +17,7 @@ export default function Header() {
 
                 {user ? (
                     <div className="flex items-center gap-3">
-                        <span className="text-sm md:text-base">{user.email}</span>
+                        {/*<span className="text-sm md:text-base">{user.email}</span>*/}
                         <motion.button
                             onClick={() => signOut(auth)}
                             whileTap={{ scale: 0.95 }}

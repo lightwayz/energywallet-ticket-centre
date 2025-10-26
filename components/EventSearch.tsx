@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, easeOut } from "framer-motion";
 import PurchaseTicket from "@/components/PurchaseTicket";
 import EventList from "@/components/EventList";
@@ -10,20 +10,44 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 export default function EventSearch() {
     const [showList, setShowList] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-    const [events, setEvents] = useState<string[]>([]);
+    const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
+    const dropdownRef = useRef<HTMLDivElement | null>(null); // 🆕 ref for click detection
 
     // 🔥 Fetch events dynamically from Firestore
     useEffect(() => {
         const q = query(collection(db, "events"), orderBy("date", "asc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedEvents = snapshot.docs.map((doc) => doc.data().name as string);
+            const fetchedEvents = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                name: doc.data().name || doc.data().title || "Untitled Event",
+            }));
             setEvents(fetchedEvents);
             setLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
+
+    // 🆕 Detect click outside dropdown
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node)
+            ) {
+                setShowList(false);
+            }
+        };
+
+        if (showList) {
+            document.addEventListener("mousedown", handleClickOutside);
+        } else {
+            document.removeEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [showList]);
 
     const buttonVariants = {
         inactive: {
@@ -33,7 +57,7 @@ export default function EventSearch() {
             transition: { duration: 0.3, ease: easeOut },
         },
         active: {
-            backgroundColor: "#FFD580",
+            backgroundColor: "#FFA500",
             scale: 1.05,
             boxShadow: "0px 0px 12px rgba(255,165,0,0.5)",
             transition: { duration: 0.3, ease: easeOut },
@@ -69,12 +93,20 @@ export default function EventSearch() {
 
     return (
         <div className="text-center py-12">
-            <h1 className="text-3xl font-bold text-energy-orange mb-8">
-                Upcoming Energy Events
-            </h1>
+            {/* 🔸 Title */}
+            <motion.h1
+                className="text-3xl md:text-4xl font-bold mb-8 tracking-widest"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+            >
+        <span className="bg-gradient-to-r from-[#FFA500] to-[#FFD580] bg-clip-text text-transparent drop-shadow-[0_0_6px_rgba(255,165,0,0.6)]">
+          UPCOMING&nbsp;EVENTS
+        </span>
+            </motion.h1>
 
             {/* 🔘 Main Button */}
-            <div className="relative my-10">
+            <div className="relative my-10" ref={dropdownRef}>
                 <motion.button
                     variants={buttonVariants}
                     initial="inactive"
@@ -99,19 +131,21 @@ export default function EventSearch() {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            className="absolute left-1/2 -translate-x-1/2 mt-4 bg-white/10 backdrop-blur-md rounded-2xl shadow-lg text-left border border-gray-800 z-50"
+                            className="absolute left-1/2 -translate-x-1/2 mt-4 bg-white/10 backdrop-blur-md rounded-2xl shadow-lg text-left border border-gray-800 z-50 max-h-80 overflow-y-auto w-72"
                             style={{ pointerEvents: "auto" }}
                         >
                             {events.length === 0 ? (
-                                <div className="px-6 py-3 text-gray-400">No events available</div>
+                                <div className="px-6 py-3 text-gray-400">
+                                    No events available
+                                </div>
                             ) : (
                                 events.map((event) => (
                                     <button
-                                        key={event}
-                                        onClick={() => handleEventSelect(event)}
+                                        key={event.id}
+                                        onClick={() => handleEventSelect(event.name)}
                                         className="block w-full px-6 py-3 text-white rounded-2xl text-left hover:bg-orange-400 transition"
                                     >
-                                        {event}
+                                        {event.name}
                                     </button>
                                 ))
                             )}

@@ -6,8 +6,8 @@ import ClientWrapper from "@/app/ClientWrapper";
 import React from "react";
 
 export const metadata = {
-    title: "Energywallet Ticket Centre",
-    description: "Buy and manage event tickets for Energywallet events.",
+    title: "Ticket Centre",
+    description: "Buy and manage event tickets for events.",
 };
 
 export default function RootLayout({
