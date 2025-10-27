@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 
+
 export const dynamic = "force-dynamic"; // ensures webhook isn't statically optimized
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
