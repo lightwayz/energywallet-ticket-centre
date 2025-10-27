@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
-// 🟢 UPDATE Event
-export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+/**
+ * Update a specific event (admin only)
+ */
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+): Promise<NextResponse> {
     try {
-        const { id } = await context.params; // ✅ unwrap the Promise
-        const { formData, userToken } = await req.json();
+        const { id } = params;
+        const { formData, userToken } = await request.json();
 
-        // ✅ Verify admin
         const decoded = await adminAuth.verifyIdToken(userToken);
         const userDoc = await adminDb.collection("users").doc(decoded.uid).get();
 
@@ -16,6 +20,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         }
 
         await adminDb.collection("events").doc(id).update(formData);
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("Error updating event:", error);
@@ -23,11 +28,16 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     }
 }
 
-// 🔴 DELETE Event
-export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+/**
+ * Delete a specific event (admin only)
+ */
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+): Promise<NextResponse> {
     try {
-        const { id } = await context.params;
-        const { userToken } = await req.json();
+        const { id } = params;
+        const { userToken } = await request.json();
 
         const decoded = await adminAuth.verifyIdToken(userToken);
         const userDoc = await adminDb.collection("users").doc(decoded.uid).get();
@@ -37,6 +47,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
         }
 
         await adminDb.collection("events").doc(id).delete();
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("Error deleting event:", error);
