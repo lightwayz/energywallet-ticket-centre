@@ -1,13 +1,10 @@
 // app/layout.tsx
+// noinspection TypeScriptExplicitMemberType
+
 import "./globals.css";
-import { AuthProvider } from "@/lib/authContext";
+import {AuthProvider} from "@/lib/authContext";
 import ClientWrapper from "@/app/ClientWrapper";
 import React from "react";
-
-export const metadata = {
-    title: "Ticket Centre",
-    description: "Buy and manage event tickets for events.",
-};
 
 export default function RootLayout({
                                        children,
@@ -17,7 +14,6 @@ export default function RootLayout({
     return (
         <html lang="en">
         <body>
-        {/* ✅ Wraps both AuthProvider and ClientWrapper */}
         <AuthProvider>
             <ClientWrapper>{children}</ClientWrapper>
         </AuthProvider>
