@@ -1,23 +1,19 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 
-// 🚀 Monnify webhook handler
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    // Only allow POST requests
-    if (req.method !== "POST") {
-        return res.status(405).json({ message: "Method not allowed" });
-    }
+export const dynamic = "force-dynamic"; // ensures webhook isn't statically optimized
 
+export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
-        const event = req.body;
+        const event = await req.json();
         console.log("🔔 Monnify Webhook Event:", event);
 
-        // ✅ Validate secret key (optional but recommended)
-        const authHeader = req.headers["authorization"];
+        // ✅ Validate secret key (recommended)
+        const authHeader = req.headers.get("authorization");
         if (authHeader !== `Bearer ${process.env.MONNIFY_SECRET_KEY}`) {
             console.warn("❌ Unauthorized Monnify webhook call");
-            return res.status(401).json({ message: "Unauthorized" });
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         // ✅ Extract transaction details
@@ -26,28 +22,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const amountPaid = event?.eventData?.amountPaid;
 
         if (!paymentReference || !paymentStatus) {
-            return res.status(400).json({ message: "Invalid webhook payload" });
+            return NextResponse.json({ message: "Invalid webhook payload" }, { status: 400 });
         }
 
-        // ✅ Extract eventId from payment reference
-        // Example: TICKET-<eventId>-<timestamp>
+        // ✅ Extract eventId from payment reference (e.g., TICKET-<eventId>-<timestamp>)
         const eventId = paymentReference.split("-")[1];
 
+        // ✅ Mark ticket as paid
         if (paymentStatus === "PAID") {
-            // ✅ Update Firestore
             const ticketRef = doc(db, "tickets", paymentReference);
             await updateDoc(ticketRef, {
                 status: "paid",
                 amountPaid,
                 updatedAt: new Date().toISOString(),
             });
-
             console.log(`✅ Ticket ${paymentReference} marked as PAID`);
         }
 
-        res.status(200).json({ success: true });
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("❌ Webhook error:", error.message);
-        res.status(500).json({ message: "Internal server error" });
+        return NextResponse.json({ message: "Internal server error" }, { status: 500 });
     }
+}
+
+// Reject other HTTP methods
+export async function GET() {
+    return NextResponse.json({ message: "Method not allowed" }, { status: 405 });
 }
