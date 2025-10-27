@@ -1,4 +1,3 @@
-// lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import {
@@ -11,13 +10,14 @@ import {
     onSnapshot,
     query,
 } from "firebase/firestore";
+import { getStorage } from "firebase/storage";  // ✅ Add this
 
 // ✅ Firebase Config
 const firebaseConfig = {
     apiKey: "AIzaSyChkW3O3Z42PkEjNhSiehuodgKuaUj_x5I",
     authDomain: "energywallet-ticket-centre.firebaseapp.com",
     projectId: "energywallet-ticket-centre",
-    storageBucket: "energywallet-ticket-centre.firebasestorage.app",
+    storageBucket: "energywallet-ticket-centre.appspot.com", // ✅ fix domain (.app → .appspot.com)
     messagingSenderId: "645091665529",
     appId: "1:645091665529:web:2f2cb1ef441e347520d6a8",
 };
@@ -28,6 +28,7 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 // ✅ Exports
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);  // ✅ Add this line
 export const eventsCollection = collection(db, "events");
 
 // ✅ Add Event — ensure date is always stored as ISO string
@@ -82,8 +83,6 @@ export const listenToEvents = (callback: (data: any[]) => void) => {
                 updatedAt: event.updatedAt?.seconds
                     ? new Date(event.updatedAt.seconds * 1000).toISOString()
                     : event.updatedAt,
-
-                // ✅ If location is an object, stringify or format it
                 location:
                     typeof event.location === "object"
                         ? Object.values(event.location).join(", ")

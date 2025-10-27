@@ -1,7 +1,6 @@
 // app/layout.tsx
 import "./globals.css";
 import { AuthProvider } from "@/lib/authContext";
-import { geistMono, geistSans } from "@/lib/fonts";
 import ClientWrapper from "@/app/ClientWrapper";
 import React from "react";
 
@@ -17,7 +16,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <body>
         {/* ✅ Wraps both AuthProvider and ClientWrapper */}
         <AuthProvider>
             <ClientWrapper>{children}</ClientWrapper>
