@@ -1,45 +1,35 @@
-import jsPDF from "jspdf";
-import QRCode from "qrcode";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
-interface TicketPDFProps {
-    eventName: string;
-    ticketCode: string;
-    emailOrPhone: string;
+export async function generateTicketPDF({ name, eventName, reference }: any) {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([420, 260]);
+    const font = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const normalFont = await pdf.embedFont(StandardFonts.Helvetica);
+
+    const orange = rgb(1, 0.65, 0);
+    const gray = rgb(0.2, 0.2, 0.2);
+
+    page.drawRectangle({
+        x: 0,
+        y: 210,
+        width: 420,
+        height: 50,
+        color: orange,
+    });
+
+    page.drawText("EVENT TICKET", {
+        x: 90,
+        y: 225,
+        size: 16,
+        font,
+        color: rgb(0, 0, 0),
+    });
+
+    page.drawText(`Name: ${name}`, { x: 40, y: 160, size: 12, font: normalFont, color: gray });
+    page.drawText(`Event: ${eventName}`, { x: 40, y: 135, size: 12, font: normalFont, color: gray });
+    page.drawText(`Reference: ${reference}`, { x: 40, y: 110, size: 12, font: normalFont, color: gray });
+    page.drawText(`Status: ✅ Confirmed`, { x: 40, y: 85, size: 12, font: normalFont, color: gray });
+    page.drawText(`Powered by Energywallet`, { x: 40, y: 40, size: 10, font: normalFont, color: rgb(0.4, 0.4, 0.4) });
+
+    return await pdf.save(); // returns Uint8Array
 }
-
-export const generateTicketPDF = async ({
-                                            eventName,
-                                            ticketCode,
-                                            emailOrPhone,
-                                        }: TicketPDFProps) => {
-    const doc = new jsPDF();
-
-    // Title
-    doc.setFontSize(22);
-    doc.setTextColor(255, 165, 0); // Orange
-    doc.setFont("helvetica", "bold");
-    doc.text("EnergyWallet Ticket", 105, 20, { align: "center" });
-
-    // Event Name
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`Event: ${eventName}`, 105, 40, { align: "center" });
-
-    // Ticket Code
-    doc.setFontSize(16);
-    doc.setTextColor(255, 165, 0);
-    doc.text(`Ticket Code: ${ticketCode}`, 105, 50, { align: "center" });
-
-    // Email/Phone
-    doc.setFontSize(14);
-    doc.setTextColor(200, 200, 200);
-    doc.text(`Sent to: ${emailOrPhone}`, 105, 60, { align: "center" });
-
-    // Generate QR code
-    const qrData = `Ticket: ${ticketCode}\nEvent: ${eventName}\nEmail/Phone: ${emailOrPhone}`;
-    const qrUrl = await QRCode.toDataURL(qrData);
-
-    doc.addImage(qrUrl, "PNG", 80, 70, 50, 50);
-
-    return doc;
-};

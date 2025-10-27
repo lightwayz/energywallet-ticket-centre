@@ -3,7 +3,9 @@ import React, { useState } from "react";
 import { generateTicketPDF } from "@/lib/pdf";
 import { motion, AnimatePresence, easeOut } from "framer-motion";
 import { fadeInUp } from "@/lib/motion";
-import { CheckCircle } from "lucide-react"; // ✅ sleek success icon
+import { CheckCircle } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export default function PurchaseTicket({
                                            eventId = "event-1",
@@ -12,67 +14,76 @@ export default function PurchaseTicket({
     eventId?: string;
     eventName?: string;
 }) {
-    const [showForm, setShowForm] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const [inputValue, setInputValue] = useState("");
     const [ticketCode, setTicketCode] = useState("");
     const [showSuccess, setShowSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [showPayment, setShowPayment] = useState(false); // 👈 controls visibility
 
-    const buttonVariants = {
-        initial: { scale: 1, boxShadow: "0px 0px 0px rgba(255,165,0,0)" },
-        hover: { scale: 1.05, boxShadow: "0px 6px 14px rgba(255,165,0,0.5)" },
-        tap: { scale: 0.95, boxShadow: "0px 0px 0px rgba(255,165,0,0.3)" },
-    };
-
-    const formVariants = {
-        hidden: { opacity: 0, y: -10, scale: 0.98 },
-        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3 } },
-        exit: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.2 } },
-    };
-
-    // ✅ Handle form submit
-    const handleFormSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!inputValue) return;
+    const handlePurchase = async () => {
+        if (loading) return;
+        setLoading(true);
 
         const generatedCode = `EW-${Math.floor(100000 + Math.random() * 900000)}`;
         setTicketCode(generatedCode);
 
         try {
-            // 🔸 Simulate backend call
-            const res = await fetch("/api/payment", {
+            const res = await fetch("/api/payment/init", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     amount: 5000,
-                    buyerName: inputValue.includes("@") ? "Email User" : "Phone User",
-                    buyerEmail: inputValue.includes("@") ? inputValue : "user@energywallet.io",
+                    buyerName: "Guest User",
+                    buyerEmail: "user@energywallet.io",
                     eventId,
+                    eventName,
                 }),
             });
 
             const data = await res.json();
-            if (data.checkoutUrl) {
-                // redirect (in real flow)
-                window.location.href = data.checkoutUrl;
-            }
+            if (!data.checkoutUrl) throw new Error("No checkout URL returned");
 
-            setIsSubmitted(true);
-            setTimeout(() => setShowSuccess(true), 1000);
+            await addDoc(collection(db, "payments"), {
+                eventId,
+                eventName,
+                buyerEmail: "user@energywallet.io",
+                buyerName: "Guest User",
+                amount: 5000,
+                status: "PENDING",
+                ticketCode: generatedCode,
+                createdAt: serverTimestamp(),
+            });
+
+            window.location.href = data.checkoutUrl;
         } catch (err) {
-            console.error("Payment error:", err);
+            console.error("Payment init error:", err);
             alert("Failed to initiate payment. Please try again.");
+        } finally {
+            setLoading(false);
         }
     };
 
-    // ✅ Generate PDF ticket
     const handleDownloadPDF = async () => {
-        const doc = await generateTicketPDF({
-            eventName,
-            ticketCode,
-            emailOrPhone: inputValue,
-        });
-        doc.save(`${ticketCode}.pdf`);
+        try {
+            const bytes = await generateTicketPDF({
+                name: "Guest User",
+                eventName,
+                reference: ticketCode,
+            });
+
+            // @ts-ignore
+            const blob = new Blob([new Uint8Array(bytes.buffer)], {
+                type: "application/pdf",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${eventName.replace(/\s/g, "_")}_${ticketCode}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("PDF generation failed:", err);
+            alert("Failed to generate ticket PDF.");
+        }
     };
 
     return (
@@ -81,53 +92,43 @@ export default function PurchaseTicket({
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="text-center my-12"
+            className="text-center my-8"
         >
-            {/* 🎟 Main Purchase Button */}
-            {!showForm && !showSuccess && (
+            {/* 🟢 Only show this button first */}
+            {!showPayment && (
                 <motion.button
-                    variants={buttonVariants}
-                    initial="initial"
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={() => setShowForm(true)}
-                    className="px-8 py-4 bg-energy-orange text-energy-black font-semibold rounded-2xl shadow-lg focus:outline-none"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowPayment(true)}
+                    className="px-8 py-3 bg-energy-orange text-energy-black rounded-2xl font-semibold shadow-md hover:bg-orange-400"
                 >
                     Purchase Ticket
                 </motion.button>
             )}
 
-            {/* ✉️ Form */}
-            <AnimatePresence mode="wait">
-                {showForm && !isSubmitted && (
-                    <motion.form
-                        key="form"
-                        variants={formVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        onSubmit={handleFormSubmit}
-                        className="mt-6 flex flex-col items-center gap-4 bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-gray-800 w-full max-w-sm mx-auto"
+            {/* 🎟 Show payment button only after click */}
+            {showPayment && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="mt-6"
+                >
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handlePurchase}
+                        disabled={loading}
+                        className={`px-8 py-3 rounded-2xl font-semibold shadow-md transition ${
+                            loading
+                                ? "bg-gray-600 cursor-not-allowed text-gray-300"
+                                : "bg-energy-orange text-energy-black hover:bg-orange-400"
+                        }`}
                     >
-                        <input
-                            type="text"
-                            required
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            placeholder="Enter Email or Phone Number"
-                            className="w-full px-4 py-3 rounded-xl bg-transparent border border-gray-700 text-white focus:outline-none focus:border-energy-orange placeholder-gray-400"
-                        />
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            type="submit"
-                            className="w-full px-6 py-3 bg-energy-orange text-energy-black font-semibold rounded-xl shadow-md hover:bg-orange-400 transition"
-                        >
-                            Continue to Payment
-                        </motion.button>
-                    </motion.form>
-                )}
-            </AnimatePresence>
+                        {loading ? "Processing..." : "Continue to Payment"}
+                    </motion.button>
+                </motion.div>
+            )}
 
             {/* ✅ Success Modal */}
             <AnimatePresence>
