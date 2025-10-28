@@ -1,9 +1,16 @@
 {
   "version": 2,
+  "functions": {
+    "api/monnify-webhook.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 10,
+      "memory": 512
+    }
+  },
   "routes": [
     {
       "src": "/api/monnify-webhook",
-      "methods": ["POST"],
+      "methods": ["POST", "OPTIONS"],
       "dest": "/api/monnify-webhook",
       "headers": {
         "Access-Control-Allow-Origin": "*",
@@ -11,13 +18,5 @@
         "Access-Control-Allow-Headers": "Content-Type, monnify-signature"
       }
     }
-  ],
-  "functions": {
-    "api/monnify-webhook.ts": {
-      "maxDuration": 10,
-      "memory": 512,
-      "runtime": "nodejs18.x"
-    }
-  },
-  "public": true
+  ]
 }
