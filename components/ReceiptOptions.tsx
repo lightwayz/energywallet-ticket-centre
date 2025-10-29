@@ -17,9 +17,9 @@ export default function ReceiptOptions() {
                 <button className="px-5 py-2 bg-energy-orange text-energy-black rounded-2xl font-medium hover:bg-orange-400 transition">
                     Email
                 </button>
-                <button className="px-5 py-2 bg-energy-orange text-energy-black rounded-2xl font-medium hover:bg-orange-400 transition">
-                    Phone
-                </button>
+                {/*<button className="px-5 py-2 bg-energy-orange text-energy-black rounded-2xl font-medium hover:bg-orange-400 transition">*/}
+                {/*    Phone*/}
+                {/*</button>*/}
             </div>
             <button className="mt-6 underline text-energy-orange hover:text-orange-400">
                 Download PDF Ticket

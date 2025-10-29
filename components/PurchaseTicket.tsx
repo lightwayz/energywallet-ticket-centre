@@ -27,13 +27,13 @@ export default function PurchaseTicket({
         setTicketCode(generatedCode);
 
         try {
-            const res = await fetch("/api/payment/init", {
+            const res = await fetch("/app/api/payment/init", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     amount: 5000,
                     buyerName: "Guest User",
-                    buyerEmail: "user@energywallet.io",
+                    buyerEmail: "info@energywalletng.com",
                     eventId,
                     eventName,
                 }),
@@ -45,7 +45,7 @@ export default function PurchaseTicket({
             await addDoc(collection(db, "payments"), {
                 eventId,
                 eventName,
-                buyerEmail: "user@energywallet.io",
+                buyerEmail: "info@energywalletng.com",
                 buyerName: "Guest User",
                 amount: 5000,
                 status: "PENDING",

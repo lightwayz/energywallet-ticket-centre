@@ -15,13 +15,13 @@ export default function DownloadApp() {
             <h3 className="text-lg font-semibold mb-4 text-energy-orange">Download EnergyWallet</h3>
             <div className="flex justify-center gap-6">
                 <a
-                    href="#"
+                    href="https://play.google.com/store/apps/details?id=com.energywalletng&hl=en"
                     className="flex items-center gap-2 px-6 py-3 bg-energy-black border border-energy-orange text-energy-orange rounded-2xl hover:bg-energy-orange hover:text-energy-black transition"
                 >
                     <FaAndroid /> Android
                 </a>
                 <a
-                    href="#"
+                    href="https://apps.apple.com/us/app/energywallet/id6737345961"
                     className="flex items-center gap-2 px-6 py-3 bg-energy-black border border-energy-orange text-energy-orange rounded-2xl hover:bg-energy-orange hover:text-energy-black transition"
                 >
                     <FaApple /> iOS

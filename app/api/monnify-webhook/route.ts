@@ -1,22 +1,34 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { generateTicketPDF } from "@/lib/ticketUtils";
+import nodemailer from "nodemailer";
+import crypto from "crypto";
 
-export const dynamic = "force-dynamic"; // prevents static optimization
+export const dynamic = "force-dynamic"; // ensures serverless execution
 
-export async function POST(req: Request) {
+// ✅ Verify Monnify signature
+function verifyMonnifySignature(body: any, signature: string): boolean {
+    const computedHash = crypto
+        .createHmac("sha512", process.env.MONNIFY_SECRET_KEY!)
+        .update(JSON.stringify(body))
+        .digest("hex");
+
+    return computedHash === signature;
+}
+
+export async function POST(req: NextRequest) {
     try {
-        // 🔍 Parse incoming webhook payload
         const payload = await req.json();
-        console.log("🔔 Monnify Webhook:", payload);
+        console.log("🔔 Monnify Webhook Received:", payload);
 
-        // ✅ Optional — Validate authorization header for security
-        const authHeader = req.headers.get("authorization");
-        if (authHeader !== `Bearer ${process.env.MONNIFY_SECRET_KEY}`) {
-            console.warn("❌ Unauthorized Monnify webhook call");
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        // ✅ Verify Monnify signature
+        const signature = req.headers.get("monnify-signature");
+        if (!signature || !verifyMonnifySignature(payload, signature)) {
+            console.warn("❌ Invalid Monnify signature");
+            return NextResponse.json({ success: false, message: "Invalid signature" }, { status: 401 });
         }
 
-        // ✅ Extract key transaction details
+        // ✅ Extract transaction details
         const {
             transactionReference,
             paymentReference,
@@ -26,36 +38,77 @@ export async function POST(req: Request) {
             customerEmail,
             customerName,
             metaData,
-        } = payload;
+            productName,
+        } = payload.eventData || payload;
 
         if (!transactionReference || !paymentStatus) {
-            return NextResponse.json(
-                { message: "Invalid webhook payload" },
-                { status: 400 }
-            );
+            return NextResponse.json({ message: "Invalid webhook payload" }, { status: 400 });
         }
 
-        // ✅ Write to Firestore (upsert style)
-        await adminDb
-            .collection("payments")
-            .doc(transactionReference)
-            .set(
-                {
-                    reference: paymentReference,
-                    amount: amountPaid,
-                    status: paymentStatus,
-                    buyerEmail: customerEmail,
-                    buyerName: customerName,
-                    eventId: metaData?.eventId || null,
-                    eventName: metaData?.eventName || null,
-                    createdAt: paidOn ? new Date(paidOn) : new Date(),
-                    updatedAt: new Date().toISOString(),
+        // ✅ Store or update in Firestore
+        await adminDb.collection("payments").doc(transactionReference).set(
+            {
+                reference: paymentReference,
+                amount: amountPaid,
+                status: paymentStatus,
+                buyerEmail: customerEmail,
+                buyerName: customerName,
+                eventId: metaData?.eventId || null,
+                eventName: metaData?.eventName || productName || "Energy Summit 2025",
+                createdAt: paidOn ? new Date(paidOn) : new Date(),
+                updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+        );
+
+        // Only proceed if payment succeeded
+        if (paymentStatus === "PAID") {
+            // 🎟 Generate QR Ticket PDF
+            const pdfBuffer = await generateTicketPDF({
+                name: customerName || "Guest User",
+                eventName: productName || "Energy Summit 2025",
+                reference: paymentReference,
+            });
+
+            // ✉️ Setup email transport
+            const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: process.env.SMTP_EMAIL,
+                    pass: process.env.SMTP_PASSWORD,
                 },
-                { merge: true }
-            );
+            });
+
+            // ✉️ Send confirmation email with attachment
+            await transporter.sendMail({
+                from: `"EnergyWallet Tickets" <${process.env.SMTP_EMAIL}>`,
+                to: customerEmail,
+                subject: "Your EnergyWallet Ticket Confirmation",
+                html: `
+          <h2>✅ Payment Confirmed</h2>
+          <p>Hi ${customerName || "Guest"},</p>
+          <p>Thank you for purchasing your ticket to <b>${productName || "Energy Summit 2025"}</b>.</p>
+          <p>Your Reference: <b>${paymentReference}</b></p>
+          <p>Attached below is your QR-based ticket. Please keep it safe.</p>
+          <br/>
+          <a href="https://energywallet-ticket-centre.vercel.app/ticket/${paymentReference}"
+             style="display:inline-block;background:#FFA500;color:#000;padding:10px 18px;border-radius:8px;text-decoration:none;">
+             Download Ticket
+          </a>
+        `,
+                attachments: [
+                    {
+                        filename: `${(productName || "Energy Summit 2025").replace(/\s/g, "_")}_${paymentReference}.pdf`,
+                        content: pdfBuffer,
+                    },
+                ],
+            });
+
+            console.log(`📧 Ticket email sent to ${customerEmail}`);
+        }
 
         console.log(`✅ Payment recorded: ${transactionReference} (${paymentStatus})`);
-        return NextResponse.json({ received: true });
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error("❌ Webhook Error:", error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
