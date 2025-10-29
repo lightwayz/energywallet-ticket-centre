@@ -1,11 +1,11 @@
 "use client";
 import React, { useState } from "react";
-import { generateTicketPDF } from "@/lib/pdf";
 import { motion, AnimatePresence, easeOut } from "framer-motion";
 import { fadeInUp } from "@/lib/motion";
 import { CheckCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {generateTicketPDF} from "@/lib/ticketUtils";
 
 export default function PurchaseTicket({
                                            eventId = "event-1",

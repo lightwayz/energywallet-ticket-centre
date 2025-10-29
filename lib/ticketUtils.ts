@@ -1,16 +1,15 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
-import nodemailer from "nodemailer";
 
 /**
- * 🧾 Generate QR Code as Data URL
+ * 🧾 Generate QR Code as Data URL (client-safe)
  */
 export async function generateQRCode(data: string): Promise<string> {
     return await QRCode.toDataURL(data, { width: 160, margin: 1 });
 }
 
 /**
- * 🎟 Generate Ticket PDF (with QR)
+ * 🎟 Generate Ticket PDF (client-safe)
  */
 export async function generateTicketPDF({
                                             name,
@@ -29,10 +28,11 @@ export async function generateTicketPDF({
     const orange = rgb(1, 0.65, 0);
     const gray = rgb(0.2, 0.2, 0.2);
 
-    // QR Code
+    // Generate QR code
     const qrDataUrl = await generateQRCode(reference);
     const qrImage = await pdf.embedPng(qrDataUrl);
 
+    // Banner
     page.drawRectangle({
         x: 0,
         y: 230,
@@ -49,13 +49,14 @@ export async function generateTicketPDF({
         color: rgb(0, 0, 0),
     });
 
+    // Ticket details
     page.drawText(`Name: ${name}`, { x: 40, y: 170, size: 12, font: normalFont, color: gray });
     page.drawText(`Event: ${eventName}`, { x: 40, y: 145, size: 12, font: normalFont, color: gray });
     page.drawText(`Reference: ${reference}`, { x: 40, y: 120, size: 12, font: normalFont, color: gray });
     page.drawText(`Status: ✅ Confirmed`, { x: 40, y: 95, size: 12, font: normalFont, color: gray });
     page.drawText(`Powered by EnergyWallet`, { x: 40, y: 50, size: 10, font: normalFont, color: rgb(0.4, 0.4, 0.4) });
 
-    // Draw QR code image
+    // QR Code on ticket
     page.drawImage(qrImage, {
         x: 280,
         y: 90,
@@ -67,62 +68,7 @@ export async function generateTicketPDF({
 }
 
 /**
- * ✉️ Send Ticket Email with Attached PDF
- */
-export async function sendTicketEmail({
-                                          to,
-                                          name,
-                                          eventName,
-                                          reference,
-                                          pdfBuffer,
-                                      }: {
-    to: string;
-    name: string;
-    eventName: string;
-    reference: string;
-    pdfBuffer: Uint8Array;
-}) {
-    const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-            user: process.env.SMTP_EMAIL,
-            pass: process.env.SMTP_PASSWORD,
-        },
-    });
-
-    const mailOptions = {
-        from: `"Tickets" <${process.env.SMTP_EMAIL}>`,
-        to,
-        subject: "🎟 Your EnergyWallet Ticket Confirmation",
-        html: `
-      <h2>✅ Payment Confirmed</h2>
-      <p>Hi ${name},</p>
-      <p>Thank you for purchasing your ticket for <b>${eventName}</b>.</p>
-      <p>Your Ticket Reference: <b>${reference}</b></p>
-      <p>The QR-based ticket is attached below. Please keep it safe.</p>
-      <br/>
-      <a href="https://energywallet-ticket-centre.vercel.app/ticket/${reference}" 
-         style="display:inline-block;background:#FFA500;color:#000;padding:10px 18px;border-radius:8px;text-decoration:none;">
-         View Ticket
-      </a>
-      <p style="margin-top:20px;">Powered by EnergyWallet</p>
-    `,
-        attachments: [
-            {
-                filename: `${eventName.replace(/\s/g, "_")}_${reference}.pdf`,
-                content: pdfBuffer,
-            },
-        ],
-    };
-
-
-    // @ts-ignore
-    transporter.sendMail(mailOptions);
-    console.log(`📧 Ticket sent to ${to}`);
-}
-
-/**
- * 🔁 Resend Confirmation Email (Client-safe call)
+ * 🔁 Client-side resend confirmation trigger
  */
 export async function resendConfirmation(reference: string, email: string) {
     try {
