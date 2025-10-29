@@ -1,28 +1,26 @@
 "use client";
-import React, { useState } from "react";
-import TicketCheckoutModal from "@/components/TicketCheckoutModal";
+import React from "react";
 import toast from "react-hot-toast";
 
-export default function EventSearchForm() {
-    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-    const [showModal, setShowModal] = useState(false);
+interface EventSearchFormProps {
+    selectedEvent: string | null;
+    onSelectEvent: (event: string) => void;
+    onPurchaseClick: () => void;
+}
 
-    const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedEvent(e.target.value);
-    };
-
-    const handlePurchaseClick = () => {
-        if (!selectedEvent) {
-            toast.error("Please select an event first.");
-            return;
-        }
-        setShowModal(true);
-    };
-
+const EventSearchForm: React.FC<EventSearchFormProps> = ({
+                                                             selectedEvent,
+                                                             onSelectEvent,
+                                                             onPurchaseClick,
+                                                         }) => {
     const eventPriceMap: Record<string, number> = {
         "Energy Summit 2025": 5000,
         "Solar Expo 2025": 7000,
         "Hydrogen Futures Forum": 8000,
+    };
+
+    const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        onSelectEvent(e.target.value);
     };
 
     return (
@@ -42,21 +40,20 @@ export default function EventSearchForm() {
             </select>
 
             <button
-                onClick={handlePurchaseClick}
+                onClick={() => {
+                    if (!selectedEvent) {
+                        toast.error("Please select an event first.");
+                    } else {
+                        onPurchaseClick();
+                    }
+                }}
                 disabled={!selectedEvent}
                 className="mt-4 w-full bg-energy-orange text-black font-semibold p-2 rounded-lg hover:bg-orange-500 disabled:opacity-50"
             >
                 Purchase Ticket
             </button>
-
-            {showModal && selectedEvent && (
-                <TicketCheckoutModal
-                    eventId={selectedEvent.toLowerCase().replace(/\s+/g, "-")}
-                    eventName={selectedEvent}
-                    price={eventPriceMap[selectedEvent]}
-                    onClose={() => setShowModal(false)}
-                />
-            )}
         </div>
     );
-}
+};
+
+export default EventSearchForm;

@@ -1,4 +1,4 @@
 export const metadata = {
-    title: "Ticket Centre",
-    description: "Buy and manage event tickets for events.",
+    title: "EnergyWallet Ticket Centre",
+    description: "Buy and verify tickets instantly.",
 };
