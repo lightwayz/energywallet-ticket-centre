@@ -4,7 +4,6 @@ import { motion, useScroll, useSpring, useTransform, AnimatePresence } from "fra
 import Image from "next/image";
 import logo from "@/lib/img/Energy_Wallet_logo_ICON[1].png";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 export default function Header() {
     // 🟠 Scroll progress glow bar
@@ -38,7 +37,7 @@ export default function Header() {
                         background: bgColor,
                         borderBottomColor: borderColor,
                     }}
-                    className="fixed top-0 left-0 w-full z-50 backdrop-blur-xl border-b shadow-lg"
+                    className="table-fixed top-0 left-0 w-full z-50 backdrop-blur-xl border-b shadow-lg"
                 >
                     {/* 🟠 Scroll progress bar */}
                     <motion.div
