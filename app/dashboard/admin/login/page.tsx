@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function AdminLogin() {
     const [email, setEmail] = useState("");
@@ -14,22 +14,13 @@ export default function AdminLogin() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-
         try {
-            const res = await signInWithEmailAndPassword(auth, email, password);
-            const user = res.user;
-
-            // ✅ You could verify an admin role from Firestore or custom claims
-            if (user.email === "admin@energywallet.io") {
-                document.cookie = `userRole=admin; path=/`;
-                toast.success("Welcome, Admin!");
-                router.push("/dashboard");
-            } else {
-                toast.error("Access denied: not an admin");
-            }
-        } catch (err: any) {
-            console.error("Login failed:", err.message);
+            setLoading(true);
+            await signInWithEmailAndPassword(auth, email, password);
+            toast.success("Welcome back!");
+            router.push("/dashboard/admin");
+        } catch (err) {
+            console.error(err);
             toast.error("Invalid email or password");
         } finally {
             setLoading(false);
@@ -37,41 +28,40 @@ export default function AdminLogin() {
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-energy-dark text-white">
-            <Toaster position="top-center" />
+        <div className="min-h-screen bg-energy-black flex items-center justify-center p-6 text-white">
             <form
                 onSubmit={handleLogin}
-                className="bg-black/50 p-8 rounded-2xl border border-gray-700 w-full max-w-sm shadow-lg"
+                className="bg-gray-900 p-6 rounded-xl shadow-lg w-full max-w-sm"
             >
-                <h1 className="text-2xl font-bold text-energy-orange mb-6 text-center">
+                <h2 className="text-2xl font-bold mb-6 text-energy-orange text-center">
                     Admin Login
-                </h1>
-
+                </h2>
                 <input
                     type="email"
-                    placeholder="Admin Email"
+                    placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-3 mb-4 rounded-lg text-black"
-                    required
+                    className="w-full p-2 mb-4 rounded bg-gray-700 text-white"
                 />
                 <input
                     type="password"
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full p-3 mb-4 rounded-lg text-black"
-                    required
+                    className="w-full p-2 mb-6 rounded bg-gray-700 text-white"
                 />
-
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 bg-energy-orange text-black font-semibold rounded-lg hover:bg-orange-400 transition"
+                    className={`w-full py-2 rounded-lg font-semibold transition ${
+                        loading
+                            ? "bg-gray-600 cursor-not-allowed"
+                            : "bg-energy-orange text-black hover:bg-orange-400"
+                    }`}
                 >
-                    {loading ? "Signing in..." : "Login"}
+                    {loading ? "Logging in..." : "Login"}
                 </button>
             </form>
-        </main>
+        </div>
     );
 }
