@@ -27,7 +27,7 @@ export default function PurchaseTicket({
         setTicketCode(generatedCode);
 
         try {
-            const res = await fetch("/app/api/payment/init", {
+            const res = await fetch("/api/payment/init", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
