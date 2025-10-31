@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AdminGuard from "@/components/AdminGuard";
 
-export default function AdminLoginPage() {
+export default function AdminPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -27,7 +27,7 @@ export default function AdminLoginPage() {
                 return;
             }
 
-            toast.success("Welcome back, Admin!");
+            toast.success("Welcome back, admin!");
             router.push("/dashboard");
         } catch (err: any) {
             console.error(err);
