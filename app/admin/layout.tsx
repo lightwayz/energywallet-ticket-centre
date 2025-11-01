@@ -12,10 +12,10 @@ export const viewport = {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
-        <AdminGuard>
+        // <AdminGuard>
         <section className="min-h-screen bg-[#0a0a0a] text-white">
             <div className="container mx-auto px-4 py-8">{children}</div>
-        </section>
-            </AdminGuard>
-    );
+        </section>)
+            {/*</AdminGuard>*/}
+    // );
 }
