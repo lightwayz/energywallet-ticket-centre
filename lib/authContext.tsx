@@ -1,95 +1,45 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import {
-    signOut,
-    signInWithPopup,
-    GoogleAuthProvider,
-    setPersistence,
-    browserLocalPersistence,
-    sendEmailVerification,
-    User,
-} from "firebase/auth";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { isWhitelistedAdmin } from "@/lib/adminWhitelist";
 
-export interface AppUser extends FirebaseUser {
-    role?: string;
-}
-
-interface AuthContextProps {
-    user: AppUser | null;
-    role: string | null;
+interface AuthContextType {
+    user: User | null;
     loading: boolean;
-    logout: () => Promise<void>;
-    googleLogin: () => Promise<void>;
-    resendVerification: () => Promise<void>;
+    role: "admin" | "user" | null;
 }
 
-const AuthContext = createContext<AuthContextProps>({
+const AuthContext = createContext<AuthContextType>({
     user: null,
-    role: null,
     loading: true,
-    logout: async () => {},
-    googleLogin: async () => {},
-    resendVerification: async () => {},
+    role: null,
 });
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [role, setRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [role, setRole] = useState<"admin" | "user" | null>(null);
 
     useEffect(() => {
-        setPersistence(auth, browserLocalPersistence);
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            setUser(firebaseUser);
-            if (firebaseUser) {
-                const ref = doc(db, "users", firebaseUser.uid);
-                const snap = await getDoc(ref);
-
-                if (snap.exists()) {
-                    setRole(snap.data().role || "user");
-                } else {
-                    // Default role = user
-                    await setDoc(ref, { email: firebaseUser.email, role: "user" });
-                    setRole("user");
-                }
+        const unsub = onAuthStateChanged(auth, (u) => {
+            setUser(u);
+            if (u?.email && isWhitelistedAdmin(u.email)) {
+                setRole("admin");
             } else {
-                setRole(null);
+                setRole("user");
             }
             setLoading(false);
         });
-
-        return () => unsubscribe();
+        return () => unsub();
     }, []);
 
-    const logout = async () => {
-        await signOut(auth);
-        setUser(null);
-        setRole(null);
-    };
-
-    const googleLogin = async () => {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
-    };
-
-    const resendVerification = async () => {
-        if (auth.currentUser && !auth.currentUser.emailVerified) {
-            await sendEmailVerification(auth.currentUser);
-        }
-    };
-
     return (
-        <AuthContext.Provider
-            value={{ user, role, loading, logout, googleLogin, resendVerification }}
-        >
+        <AuthContext.Provider value={{ user, loading, role }}>
             {children}
         </AuthContext.Provider>
     );
-};
+}
 
 export const useAuth = () => useContext(AuthContext);

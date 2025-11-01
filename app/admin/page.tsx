@@ -1,31 +1,21 @@
-// noinspection DuplicatedCode,JSIgnoredPromiseFromCall,JSUnusedLocalSymbols,HtmlUnknownAttribute
+// noinspection JSIgnoredPromiseFromCall
 
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-    collection,
-    getDocs,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
-    Timestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AdminGuard from "@/components/AdminGuard";
-
-// ✅ Import modularized admin components
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import EventManager from "@/components/admin/EventManager";
 import PaymentManager from "@/components/admin/PaymentManager";
 import EventModal from "@/components/admin/EventModal";
 
 export default function AdminPage() {
+    const router = useRouter();
     const [tab, setTab] = useState<"dashboard" | "events" | "payments">("dashboard");
     const [events, setEvents] = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
@@ -44,20 +34,10 @@ export default function AdminPage() {
         bannerUrl: "",
     });
 
-    const router = useRouter();
-
-    // 🔹 Logout
-    const handleLogout = async () => {
-        await signOut(auth);
-        document.cookie = "userRole=; path=/; max-age=0";
-        toast.success("Logged out successfully");
-        router.push("/admin/login");
-    };
-
-    // 🔹 Fetch Events & Payments
+    // ✅ Fetch all events and payments at once
     useEffect(() => {
         fetchAll();
-    }, [tab]);
+    }, []);
 
     const fetchAll = async () => {
         setLoading(true);
@@ -66,14 +46,21 @@ export default function AdminPage() {
             const paySnap = await getDocs(collection(db, "payments"));
             setEvents(evtSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setPayments(paySnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        } catch (err) {
-            console.error("Error fetching:", err);
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to fetch data");
         } finally {
             setLoading(false);
         }
     };
 
-    // 🔹 Event CRUD
+    const handleLogout = async () => {
+        await signOut(auth);
+        localStorage.removeItem("adminEmail");
+        document.cookie = "userRole=; path=/; max-age=0";
+        toast.success("Logged out");
+        router.push("/admin/login");
+    };
 
     const openEditModal = (event: any) => {
         setEditMode(true);
@@ -140,7 +127,7 @@ export default function AdminPage() {
     };
 
     const handleConfirmPayment = async (id: string) => {
-        await updateDoc(doc(db, "payments", id), { status: "PAID" });
+        await updateDoc(doc(db, "payments", id), { status: "PAID", confirmedAt: Timestamp.now() });
         toast.success("Payment confirmed.");
         await fetchAll();
     };
@@ -154,36 +141,35 @@ export default function AdminPage() {
     return (
         <AdminGuard>
             <div className="min-h-screen bg-gray-900 text-white p-6">
-                {/* 🔹 Navigation */}
-                <nav className="flex justify-between mb-6 border-b border-gray-700 pb-3">
+                {/* Top Navigation */}
+                <nav className="flex justify-between items-center mb-6 border-b border-gray-800 pb-3">
                     <div className="flex gap-4 text-sm">
                         <a href="/" className="text-gray-300 hover:text-white">Home</a>
-                        <a href="/dashboard" className="text-gray-300 hover:text-white">Dashboard</a>
-                        <a href="dashboard/admin" className="text-gray-300 hover:text-white">Admin</a>
-                        <a href="/admin/login" className="text-gray-300 hover:text-white">Login</a>
+                        <a href="/events" className="text-gray-300 hover:text-white">Events</a>
+                        <a href="/admin" className="text-gray-300 hover:text-white">Admin</a>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="px-4 py-1 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-semibold"
+                        className="px-3 py-1 bg-red-500 hover:bg-red-600 rounded"
                     >
                         Logout
                     </button>
                 </nav>
 
-                {/* 🔹 Tabs */}
+                {/* Tabs */}
                 <div className="flex gap-3 mb-6">
                     {["dashboard", "events", "payments"].map((t) => (
                         <button
                             key={t}
                             onClick={() => setTab(t as any)}
-                            className={`px-4 py-2 rounded-lg font-semibold ${
+                            className={`px-4 py-2 rounded-lg font-semibold transition ${
                                 tab === t
                                     ? t === "dashboard"
                                         ? "bg-orange-500"
                                         : t === "events"
                                             ? "bg-emerald-500"
                                             : "bg-blue-500"
-                                    : "bg-gray-700 hover:bg-gray-600"
+                                    : "bg-gray-800 hover:bg-gray-700"
                             }`}
                         >
                             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -191,24 +177,20 @@ export default function AdminPage() {
                     ))}
                 </div>
 
-                {/* 🔹 Content */}
+                {/* Main Content */}
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin h-10 w-10 border-t-2 border-b-2 border-gray-500 rounded-full"></div>
+                        <div className="animate-spin h-10 w-10 border-t-2 border-b-2 border-gray-600 rounded-full" />
                     </div>
                 ) : tab === "dashboard" ? (
                     <AdminDashboard events={events} payments={payments} />
                 ) : tab === "events" ? (
                     <EventManager events={events} onEdit={openEditModal} onDelete={handleDeleteEvent} />
                 ) : (
-                    <PaymentManager
-                        payments={payments}
-                        onConfirm={handleConfirmPayment}
-                        onDelete={handleDeletePayment}
-                    />
+                    <PaymentManager payments={payments} onConfirm={handleConfirmPayment} onDelete={handleDeletePayment} />
                 )}
 
-                {/* 🔹 Modal */}
+                {/* Modal */}
                 {showModal && (
                     <EventModal
                         formData={formData}

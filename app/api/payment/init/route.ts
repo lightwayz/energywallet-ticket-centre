@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,7 @@ export async function POST(req: NextRequest) {
 
         const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
 
-        // ✅ Step 1: Generate an access token
+        // ✅ Step 1: Generate Monnify access token
         const tokenRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
             method: "POST",
             headers: {
@@ -30,7 +32,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Failed to authorize Monnify" }, { status: 500 });
         }
 
-        // ✅ Step 2: Initialize transaction
+        // ✅ Step 2: Initialize Monnify transaction
+        const paymentReference = `TICKET-${eventId}-${Date.now()}`;
         const initRes = await fetch(`${baseUrl}/api/v1/merchant/transactions/init-transaction`, {
             method: "POST",
             headers: {
@@ -41,22 +44,31 @@ export async function POST(req: NextRequest) {
                 amount,
                 customerName: buyerName,
                 customerEmail: buyerEmail,
-                paymentReference: `TICKET-${eventId}-${Date.now()}`,
+                paymentReference,
                 paymentDescription: `Ticket for ${eventName}`,
                 currencyCode: "NGN",
                 contractCode,
                 redirectUrl: "https://energywallet-ticket-centre.vercel.app/verify",
                 paymentMethods: ["CARD", "ACCOUNT_TRANSFER"],
-                metadata: {
-                    eventId,
-                    eventName,
-                },
+                metadata: { eventId, eventName },
             }),
         });
 
         const initData = await initRes.json();
 
+        // ✅ Step 3: If Monnify init succeeds, record purchase
         if (initData?.requestSuccessful && initData?.responseBody?.checkoutUrl) {
+            await addDoc(collection(db, "purchases"), {
+                userEmail: buyerEmail,
+                userName: buyerName,
+                eventId,
+                eventName,
+                amount,
+                paymentStatus: "PENDING",
+                paymentRef: paymentReference,
+                createdAt: serverTimestamp(),
+            });
+
             return NextResponse.json({
                 checkoutUrl: initData.responseBody.checkoutUrl,
             });

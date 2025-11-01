@@ -1,12 +1,17 @@
 // app/layout.tsx
-// noinspection TypeScriptExplicitMemberType
-
 import "./globals.css";
-import {AuthProvider} from "@/lib/authContext";
-import ClientWrapper from "@/app/ClientWrapper";
-import {Toaster} from "react-hot-toast";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "@/lib/authContext";
 import React from "react";
 
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+    title: "EnergyWallet Ticket Centre",
+    description: "Smart ticketing and event management system",
+};
 
 export default function RootLayout({
                                        children,
@@ -14,17 +19,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en">
-        <body>
-        <Toaster
-            position="top-center"
-            toastOptions={{
-                style: { background: "#222", color: "#fff" },
-                duration: 4000,
-            }}
-        />
+        <html lang="en" className="bg-energy-black text-white">
+        <body className={`${inter.className} min-h-screen`}>
         <AuthProvider>
-            <ClientWrapper>{children}</ClientWrapper>
+            {children}
+            <Toaster position="top-center" />
         </AuthProvider>
         </body>
         </html>

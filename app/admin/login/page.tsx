@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { isWhitelistedAdmin } from "@/lib/adminWhitelist";
 import toast from "react-hot-toast";
-import AdminGuard from "@/components/AdminGuard";
 
-export default function AdminPage() {
+export default function AdminLoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -19,59 +19,52 @@ export default function AdminPage() {
 
         try {
             await setPersistence(auth, browserLocalPersistence);
-            const result = await signInWithEmailAndPassword(auth, email, password);
+            const { user } = await signInWithEmailAndPassword(auth, email, password);
 
-            const allowedAdmins = ["admin@energywallet.io", "lightways@energywallet.io"];
-            if (!allowedAdmins.includes(result.user.email || "")) {
-                toast.error("Access denied: Not an admin");
+            // ✅ Whitelist validation
+            if (!isWhitelistedAdmin(user.email)) {
+                toast.error("Access denied. Not an admin.");
                 return;
             }
 
-            toast.success("Welcome back, admin!");
-            router.push("/dashboard");
+            localStorage.setItem("adminEmail", user.email!);
+            toast.success("Welcome, Admin!");
+            router.push("/admin");
         } catch (err: any) {
-            console.error(err);
-            toast.error("Invalid credentials");
+            toast.error(err.message || "Login failed");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <AdminGuard>
-            <div className="min-h-screen bg-energy-black flex flex-col items-center justify-center text-white p-6">
-                <h1 className="text-2xl font-bold text-energy-orange mb-6">Admin Login</h1>
-                <form
-                    onSubmit={handleLogin}
-                    className="bg-gray-900 p-6 rounded-xl shadow-lg w-full max-w-sm"
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
+            <h1 className="text-2xl font-bold mb-4">Admin Login</h1>
+            <form onSubmit={handleLogin} className="w-80 space-y-4">
+                <input
+                    type="email"
+                    placeholder="Email"
+                    className="w-full p-2 bg-gray-800 rounded"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+                <input
+                    type="password"
+                    placeholder="Password"
+                    className="w-full p-2 bg-gray-800 rounded"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 rounded py-2 font-semibold"
                 >
-                    <label className="block mb-2 text-sm text-gray-400">Email</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-2 mb-4 rounded-md text-black"
-                    />
-
-                    <label className="block mb-2 text-sm text-gray-400">Password</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-2 mb-6 rounded-md text-black"
-                    />
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full py-2 rounded-lg font-semibold transition ${
-                            loading ? "bg-gray-600" : "bg-energy-orange text-black hover:bg-orange-400"
-                        }`}
-                    >
-                        {loading ? "Logging in..." : "Login"}
-                    </button>
-                </form>
-            </div>
-        </AdminGuard>
+                    {loading ? "Logging in..." : "Login"}
+                </button>
+            </form>
+        </div>
     );
 }

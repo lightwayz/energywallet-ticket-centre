@@ -1,3 +1,5 @@
+// noinspection ES6ShorthandObjectProperty
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -14,11 +16,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/authContext";
-import { User as FirebaseUser } from "firebase/auth";
-
-export interface AppUser extends FirebaseUser {
-    role?: string;
-}
 
 type EventListProps = {
     selectedEvent: string;
@@ -31,21 +28,21 @@ type Ticket = {
 };
 
 export default function EventList({ selectedEvent }: EventListProps) {
-    const { user } = useAuth();
+    const { user, role } = useAuth(); // ✅ use role from context
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [newName, setNewName] = useState("");
     const [newPrice, setNewPrice] = useState("");
 
-
-
     // 🔹 Real-time ticket fetching
     useEffect(() => {
         const q = query(collection(db, "tickets"), where("eventName", "==", selectedEvent));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Ticket[];
-            console.log("🔥 Tickets fetched:", data);
+            const data = snapshot.docs.map((d) => ({
+                id: d.id,
+                ...d.data(),
+            })) as Ticket[];
             setTickets(data);
         });
         return () => unsubscribe();
@@ -75,7 +72,10 @@ export default function EventList({ selectedEvent }: EventListProps) {
     const saveEdit = async () => {
         if (!editingTicket) return;
         try {
-            await updateDoc(doc(db, "tickets", editingTicket.id), { name: newName, price: newPrice });
+            await updateDoc(doc(db, "tickets", editingTicket.id), {
+                name: newName,
+                price: newPrice,
+            });
             setEditingTicket(null);
         } catch (err) {
             console.error(err);
@@ -85,7 +85,8 @@ export default function EventList({ selectedEvent }: EventListProps) {
 
     // 🔹 Add a new ticket
     const addTicket = async () => {
-        if (!newName || !newPrice) return alert("Please provide both name and price.");
+        if (!newName || !newPrice)
+            return alert("Please provide both name and price.");
         try {
             await addDoc(collection(db, "tickets"), {
                 name: newName,
@@ -104,7 +105,7 @@ export default function EventList({ selectedEvent }: EventListProps) {
     return (
         <>
             <div className="flex justify-end mb-4">
-                {user?.role === "admin" && (
+                {role === "admin" && ( // ✅ check a role from context
                     <motion.button
                         onClick={() => setModalOpen(true)}
                         whileHover={{ scale: 1.05 }}
@@ -129,10 +130,12 @@ export default function EventList({ selectedEvent }: EventListProps) {
                         whileTap={{ scale: 0.97 }}
                         className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-gray-800 shadow-lg text-center"
                     >
-                        <h2 className="text-lg font-semibold text-energy-orange mb-2">{ticket.name}</h2>
+                        <h2 className="text-lg font-semibold text-energy-orange mb-2">
+                            {ticket.name}
+                        </h2>
                         <p className="text-gray-300">{ticket.price}</p>
 
-                        {user?.role === "admin" ? (
+                        {role === "admin" ? ( // ✅ admin-only buttons
                             <div className="flex justify-center gap-2 mt-4">
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
