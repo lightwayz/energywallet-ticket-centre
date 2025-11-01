@@ -13,10 +13,13 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import EventManager from "@/components/admin/EventManager";
 import PaymentManager from "@/components/admin/PaymentManager";
 import EventModal from "@/components/admin/EventModal";
+import PurchasesManager from "@/components/admin/PurchasesManager";
+
 
 export default function AdminPage() {
     const router = useRouter();
-    const [tab, setTab] = useState<"dashboard" | "events" | "payments">("dashboard");
+    const [tab, setTab] = useState<"dashboard" | "events" | "payments" | "purchases">("dashboard");
+    const [purchases, setPurchases] = useState<any[]>([]);
     const [events, setEvents] = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -44,11 +47,13 @@ export default function AdminPage() {
         try {
             const evtSnap = await getDocs(collection(db, "events"));
             const paySnap = await getDocs(collection(db, "payments"));
+            const purSnap = await getDocs(collection(db, "purchases")); // ✅ add this
+
             setEvents(evtSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setPayments(paySnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            setPurchases(purSnap.docs.map((d) => ({ id: d.id, ...d.data() }))); // ✅ store purchases
         } catch (e) {
             console.error(e);
-            toast.error("Failed to fetch data");
         } finally {
             setLoading(false);
         }
@@ -61,6 +66,14 @@ export default function AdminPage() {
         toast.success("Logged out");
         router.push("/admin/login");
     };
+
+    const handleDeletePurchase = async (id: string) => {
+        if (!confirm("Delete this purchase record?")) return;
+        await deleteDoc(doc(db, "purchases", id));
+        toast.success("Purchase deleted.");
+        await fetchAll();
+    };
+
 
     const openEditModal = (event: any) => {
         setEditMode(true);
@@ -157,18 +170,20 @@ export default function AdminPage() {
                 </nav>
 
                 {/* Tabs */}
-                <div className="flex gap-3 mb-6">
-                    {["dashboard", "events", "payments"].map((t) => (
+                <div className="flex gap-3 mb-6 flex-wrap">
+                    {["dashboard", "events", "payments", "purchases"].map((t) => (
                         <button
                             key={t}
                             onClick={() => setTab(t as any)}
-                            className={`px-4 py-2 rounded-lg font-semibold transition ${
+                            className={`px-4 py-2 rounded-lg font-semibold ${
                                 tab === t
                                     ? t === "dashboard"
                                         ? "bg-orange-500"
                                         : t === "events"
                                             ? "bg-emerald-500"
-                                            : "bg-blue-500"
+                                            : t === "payments"
+                                                ? "bg-blue-500"
+                                                : "bg-purple-500"
                                     : "bg-gray-800 hover:bg-gray-700"
                             }`}
                         >
@@ -189,6 +204,8 @@ export default function AdminPage() {
                 ) : (
                     <PaymentManager payments={payments} onConfirm={handleConfirmPayment} onDelete={handleDeletePayment} />
                 )}
+                <PurchasesManager purchases={purchases} onDelete={handleDeletePurchase} />
+                )
 
                 {/* Modal */}
                 {showModal && (
