@@ -3,21 +3,39 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp } from "firebase/firestore";
+import {
+    collection,
+    getDocs,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    Timestamp,
+} from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+
+// Admin Components
 import AdminGuard from "@/components/AdminGuard";
+import AdminDashboard from "@/components/admin/AdminDashboard";
+import EventManager from "@/components/admin/EventManager";
+import EventModal from "@/components/admin/EventModal";
+import PaymentManager from "@/components/admin/PaymentManager";
+import PurchaseManager from "@/components/admin/PurchaseManager";
 
 export default function AdminPage() {
     const router = useRouter();
-
+    const [tab, setTab] = useState<"dashboard" | "events" | "payments" | "purchases">("dashboard");
     const [events, setEvents] = useState<any[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [currentEvent, setCurrentEvent] = useState<any>(null);
-
+    const [bannerFile, setBannerFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -27,24 +45,26 @@ export default function AdminPage() {
         bannerUrl: "",
     });
 
-    // Fetch events
+    // 🟢 Fetch Events & Payments
     useEffect(() => {
-        fetchEvents();
-    }, []);
+        fetchAll();
+    }, [tab]);
 
-    const fetchEvents = async () => {
+    const fetchAll = async () => {
         setLoading(true);
         try {
             const evtSnap = await getDocs(collection(db, "events"));
+            const paySnap = await getDocs(collection(db, "payments"));
             setEvents(evtSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        } catch (err) {
-            console.error("Error fetching events:", err);
+            setPayments(paySnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
         }
     };
 
-    // Handle Logout
+    // 🔹 Logout
     const handleLogout = async () => {
         await signOut(auth);
         document.cookie = "userRole=; path=/; max-age=0";
@@ -52,46 +72,11 @@ export default function AdminPage() {
         router.push("/admin/login");
     };
 
-    // Handle Create or Update
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // 🔹 Go to Admin Work page
+    const goToAdminWork = () => router.push("/admin/work");
 
-        try {
-            if (editMode && currentEvent) {
-                await updateDoc(doc(db, "events", currentEvent.id), {
-                    ...formData,
-                    date: Timestamp.fromDate(new Date(formData.date)),
-                    updatedAt: Timestamp.now(),
-                });
-                toast.success("Event updated successfully!");
-            } else {
-                await addDoc(collection(db, "events"), {
-                    ...formData,
-                    date: Timestamp.fromDate(new Date(formData.date)),
-                    createdAt: Timestamp.now(),
-                });
-                toast.success("Event created successfully!");
-            }
-
-            setFormData({
-                title: "",
-                description: "",
-                date: "",
-                location: "",
-                price: "",
-                bannerUrl: "",
-            });
-            setEditMode(false);
-            setCurrentEvent(null);
-            await fetchEvents();
-        } catch (err) {
-            console.error("Error saving event:", err);
-            toast.error("Failed to save event.");
-        }
-    };
-
-    // Edit Event
-    const handleEdit = (event: any) => {
+    // 🔹 Open Edit Modal
+    const openEditModal = (event: any) => {
         setEditMode(true);
         setCurrentEvent(event);
         setFormData({
@@ -104,30 +89,84 @@ export default function AdminPage() {
             price: event.price,
             bannerUrl: event.bannerUrl || "",
         });
+        setBannerFile(null);
+        setShowModal(true);
     };
 
-    // Delete Event
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this event?")) return;
+    // 🔹 Save or Update Event
+    const handleSaveEvent = async (e: React.FormEvent) => {
+        e.preventDefault();
         try {
-            await deleteDoc(doc(db, "events", id));
-            toast.success("Event deleted successfully!");
-            await fetchEvents();
+            let bannerUrl = formData.bannerUrl || "";
+            if (bannerFile) {
+                setUploading(true);
+                const form = new FormData();
+                form.append("file", bannerFile);
+                const res = await fetch("/api/upload-banner", { method: "POST", body: form });
+                const data = await res.json();
+                bannerUrl = data.url;
+                setUploading(false);
+            }
+
+            const eventData = {
+                ...formData,
+                bannerUrl,
+                date: Timestamp.fromDate(new Date(formData.date)),
+                updatedAt: Timestamp.now(),
+            };
+
+            if (editMode && currentEvent) {
+                await updateDoc(doc(db, "events", currentEvent.id), eventData);
+                toast.success("Event updated!");
+            } else {
+                await addDoc(collection(db, "events"), {
+                    ...eventData,
+                    createdAt: Timestamp.now(),
+                });
+                toast.success("Event added!");
+            }
+
+            setShowModal(false);
+            await fetchAll();
         } catch (err) {
-            console.error("Error deleting event:", err);
-            toast.error("Failed to delete event.");
+            console.error(err);
+            toast.error("Failed to save event");
         }
     };
 
+    // 🔹 Delete Event
+    const handleDeleteEvent = async (id: string) => {
+        if (!confirm("Delete this event permanently?")) return;
+        await deleteDoc(doc(db, "events", id));
+        toast.success("Event deleted.");
+        await fetchAll();
+    };
+
+    // 🔹 Confirm & Delete Payment
+    const handleConfirmPayment = async (id: string) => {
+        await updateDoc(doc(db, "payments", id), { status: "PAID", confirmedAt: Timestamp.now() });
+        toast.success("Payment confirmed.");
+        await fetchAll();
+    };
+
+    const handleDeletePayment = async (id: string) => {
+        await deleteDoc(doc(db, "payments", id));
+        toast.success("Payment deleted.");
+        await fetchAll();
+    };
+
+    // 🔹 Render UI
     return (
         <AdminGuard>
             <div className="min-h-screen bg-gray-900 text-white p-6">
-                {/* 🔹 Top Navigation */}
-                <nav className="flex justify-between items-center mb-8 border-b border-gray-700 pb-3">
+                {/* 🔹 Top Nav */}
+                <nav className="flex justify-between mb-6 border-b border-gray-700 pb-3">
                     <div className="flex gap-4 text-sm">
                         <a href="/" className="text-gray-300 hover:text-white">Home</a>
-                        <a href="/events" className="text-gray-300 hover:text-white">Events</a>
-                        <a href="/admin" className="text-gray-300 hover:text-white font-semibold">Admin</a>
+                        <a href="/admin/logs" className="text-gray-300 hover:text-white">Events log</a>
+                        <button onClick={goToAdminWork} className="text-gray-300 hover:text-emerald-400 font-semibold">
+                            Admin
+                        </button>
                     </div>
                     <button
                         onClick={handleLogout}
@@ -137,104 +176,57 @@ export default function AdminPage() {
                     </button>
                 </nav>
 
-                {/* 🔹 Event Form */}
-                <form onSubmit={handleSave} className="bg-gray-800 p-6 rounded-xl mb-8">
-                    <h2 className="text-xl font-bold mb-4 text-energy-orange">
-                        {editMode ? "Edit Event" : "Add New Event"}
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <input
-                            type="text"
-                            placeholder="Event Title"
-                            className="p-2 rounded bg-gray-700 text-white"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Location"
-                            className="p-2 rounded bg-gray-700 text-white"
-                            value={formData.location}
-                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        />
-                        <input
-                            type="datetime-local"
-                            className="p-2 rounded bg-gray-700 text-white"
-                            value={formData.date}
-                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                        />
-                        <input
-                            type="number"
-                            placeholder="Price (₦)"
-                            className="p-2 rounded bg-gray-700 text-white"
-                            value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Banner URL"
-                            className="p-2 rounded bg-gray-700 text-white col-span-2"
-                            value={formData.bannerUrl}
-                            onChange={(e) => setFormData({ ...formData, bannerUrl: e.target.value })}
-                        />
-                    </div>
-                    <textarea
-                        placeholder="Event Description"
-                        className="w-full mt-4 p-2 rounded bg-gray-700 text-white"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                    <button
-                        type="submit"
-                        className="mt-4 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold"
-                    >
-                        {editMode ? "Update Event" : "Add Event"}
-                    </button>
-                </form>
+                {/* 🔹 Tabs */}
+                <div className="flex gap-3 mb-6">
+                    {["dashboard", "events", "payments", "purchases"].map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => setTab(t as any)}
+                            className={`px-4 py-2 rounded-lg font-semibold ${
+                                tab === t
+                                    ? t === "dashboard"
+                                        ? "bg-orange-500"
+                                        : t === "events"
+                                            ? "bg-emerald-500"
+                                            : t === "payments"
+                                                ? "bg-blue-500"
+                                                : "bg-purple-500"
+                                    : "bg-gray-700 hover:bg-gray-600"
+                            }`}
+                        >
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                        </button>
+                    ))}
+                </div>
 
-                {/* 🔹 Event List */}
-                <h2 className="text-2xl font-semibold mb-4 text-energy-orange">All Events</h2>
+                {/* 🔹 Content */}
                 {loading ? (
-                    <p className="text-gray-400">Loading events...</p>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {events.map((event) => (
-                            <div key={event.id} className="bg-gray-800 rounded-xl p-5 shadow-lg">
-                                {event.bannerUrl && (
-                                    <div className="overflow-hidden rounded-lg mb-3">
-                                        <img
-                                            src={event.bannerUrl}
-                                            alt="Event Banner"
-                                            className="w-full h-40 object-cover transition-transform duration-500 hover:scale-110"
-                                        />
-                                    </div>
-                                )}
-                                <h3 className="text-lg font-semibold text-emerald-400">{event.title}</h3>
-                                <p className="text-gray-300">{event.description}</p>
-                                <p className="text-sm text-gray-400 mt-2">
-                                    📍 {event.location} <br />
-                                    🕒 {event.date?.toDate
-                                    ? event.date.toDate().toLocaleString()
-                                    : event.date}
-                                </p>
-                                <p className="text-energy-orange font-semibold mt-2">₦{event.price}</p>
-                                <div className="flex justify-end gap-2 mt-4">
-                                    <button
-                                        onClick={() => handleEdit(event)}
-                                        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded text-sm"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(event.id)}
-                                        className="px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-sm"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin h-10 w-10 border-t-2 border-b-2 border-gray-500 rounded-full"></div>
                     </div>
+                ) : tab === "dashboard" ? (
+                    <AdminDashboard events={events} payments={payments} />
+                ) : tab === "events" ? (
+                    <EventManager events={events} onEdit={openEditModal} onDelete={handleDeleteEvent} />
+                ) : tab === "payments" ? (
+                    <PaymentManager payments={payments} onConfirm={handleConfirmPayment} onDelete={handleDeletePayment} />
+                ) : (
+                    <PurchaseManager purchases={[]} onDelete={function(): Promise<void> {
+                                        throw new Error("Function not implemented.");
+                                    } } />
+                )}
+
+                {/* 🔹 Modal */}
+                {showModal && (
+                    <EventModal
+                        formData={formData}
+                        setFormData={setFormData}
+                        handleSaveEvent={handleSaveEvent}
+                        setShowModal={setShowModal}
+                        editMode={editMode}
+                        uploading={uploading}
+                        setBannerFile={setBannerFile}
+                    />
                 )}
             </div>
         </AdminGuard>

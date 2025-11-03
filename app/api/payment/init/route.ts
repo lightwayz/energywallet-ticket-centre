@@ -1,21 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
     try {
-        const { amount, buyerEmail, buyerName, eventId, eventName } = await req.json();
+        const { buyerEmail, buyerName, eventId, eventName } = await req.json();
 
+        // ✅ 1. Fetch actual ticket price from Firestore
+        const eventDoc = await getDoc(doc(db, "events", eventId));
+        if (!eventDoc.exists()) {
+            console.error("❌ Event not found:", eventId);
+            return NextResponse.json({ message: "Event not found" }, { status: 404 });
+        }
+
+        const eventData = eventDoc.data();
+        const amount = Number(eventData?.price || 0);
+
+        if (isNaN(amount) || amount <= 0) {
+            console.error("❌ Invalid event amount:", amount);
+            return NextResponse.json({ message: "Invalid event amount" }, { status: 400 });
+        }
+
+        // ✅ 2. Monnify credentials
         const baseUrl = process.env.MONNIFY_BASE_URL!;
         const apiKey = process.env.MONNIFY_API_KEY!;
         const secretKey = process.env.MONNIFY_SECRET_KEY!;
         const contractCode = process.env.MONNIFY_CONTRACT_CODE!;
-
         const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
 
-        // ✅ Step 1: Generate Monnify access token
+        // ✅ 3. Generate Monnify access token
         const tokenRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
             method: "POST",
             headers: {
@@ -32,7 +47,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Failed to authorize Monnify" }, { status: 500 });
         }
 
-        // ✅ Step 2: Initialize Monnify transaction
+        // ✅ 4. Initialize Monnify transaction
         const paymentReference = `TICKET-${eventId}-${Date.now()}`;
         const initRes = await fetch(`${baseUrl}/api/v1/merchant/transactions/init-transaction`, {
             method: "POST",
@@ -56,7 +71,7 @@ export async function POST(req: NextRequest) {
 
         const initData = await initRes.json();
 
-        // ✅ Step 3: If Monnify init succeeds, record purchase
+        // ✅ 5. Save a purchase if Monnify returns a checkout link
         if (initData?.requestSuccessful && initData?.responseBody?.checkoutUrl) {
             await addDoc(collection(db, "purchases"), {
                 userEmail: buyerEmail,
@@ -77,7 +92,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Monnify init failed" }, { status: 500 });
         }
     } catch (error: any) {
-        console.error("❌ Payment Init Error:", error.message);
+        console.error("❌ Payment Init Error:", error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }

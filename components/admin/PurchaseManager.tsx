@@ -20,7 +20,7 @@ interface Props {
     onDelete: (id: string) => Promise<void>;
 }
 
-export default function PurchasesManager({ purchases, onDelete }: Props) {
+export default function PurchaseManager({ purchases, onDelete }: Props) {
     const [filterEvent, setFilterEvent] = useState<string>("All");
     const [sortKey, setSortKey] = useState<keyof Purchase>("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
