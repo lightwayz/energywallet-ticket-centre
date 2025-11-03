@@ -4,21 +4,22 @@
 
 import React, { useEffect, useState } from "react";
 import {
-    collection,
-    getDocs,
     addDoc,
-    updateDoc,
+    collection,
     deleteDoc,
     doc,
+    getDocs,
     Timestamp,
+    updateDoc,
 } from "firebase/firestore";
-import { db, auth, storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import imageCompression from "browser-image-compression";
+import { auth, db } from "@/lib/firebase"; // ❗ keep only Firestore + Auth
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import imageCompression from "browser-image-compression";
 import AdminGuard from "@/components/AdminGuard";
+import { uploadToBlob } from "@/lib/vercel-blob";
+
 
 export default function AdminPage() {
     const router = useRouter();
@@ -27,7 +28,6 @@ export default function AdminPage() {
     const [editMode, setEditMode] = useState(false);
     const [currentEvent, setCurrentEvent] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
-    const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
@@ -57,51 +57,67 @@ export default function AdminPage() {
         router.push("/admin/login");
     };
 
-    // ✅ Upload to Firebase Storage with compression
-    const uploadBannerToFirebase = async (file: File) => {
-        const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1280,
-            useWebWorker: true,
-        };
-
+    // ✅ Banner Upload (Vercel Blob only)
+    const handleBannerUpload = async (file: File) => {
+        setUploading(true);
         try {
-            const compressed = await imageCompression(file, options);
-            const storageRef = ref(storage, `banners/${Date.now()}-${file.name}`);
-            await uploadBytes(storageRef, compressed);
-            const downloadURL = await getDownloadURL(storageRef);
-            return downloadURL;
-        } catch (error) {
-            console.error("Upload error:", error);
-            toast.error("Banner upload failed");
+            const compressed = await imageCompression(file, {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1280,
+                useWebWorker: true,
+            });
+
+            const url = await uploadToBlob(compressed as Blob, "banners");
+            setFormData((prev) => ({ ...prev, bannerUrl: url }));
+            setPreview(url);
+            toast.success("✅ Banner uploaded successfully!");
+            return url;
+        } catch (err) {
+            console.error(err);
+            toast.error("Upload failed");
             return "";
+        } finally {
+            setUploading(false);
         }
     };
 
+
+    // ✅ Save / Update Event
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        setUploading(true);
+
         try {
-            setUploading(true);
+            if (!formData.title.trim()) {
+                toast.error("Please enter an event title");
+                return;
+            }
+            if (!formData.date) {
+                toast.error("Please select a valid date and time");
+                return;
+            }
 
-            let bannerUrl = formData.bannerUrl || "";
-
-            if (bannerFile) {
-                bannerUrl = await uploadBannerToFirebase(bannerFile);
+            const eventDate = new Date(formData.date);
+            if (isNaN(eventDate.getTime())) {
+                toast.error("Invalid date format.");
+                return;
             }
 
             const payload = {
                 ...formData,
-                bannerUrl,
-                date: Timestamp.fromDate(new Date(formData.date)),
+                date: Timestamp.fromDate(eventDate),
                 updatedAt: Timestamp.now(),
             };
 
             if (editMode && currentEvent) {
                 await updateDoc(doc(db, "events", currentEvent.id), payload);
-                toast.success("Event updated");
+                toast.success("✅ Event updated successfully!");
             } else {
-                await addDoc(collection(db, "events"), { ...payload, createdAt: Timestamp.now() });
-                toast.success("Event created");
+                await addDoc(collection(db, "events"), {
+                    ...payload,
+                    createdAt: Timestamp.now(),
+                });
+                toast.success("✅ Event created successfully!");
             }
 
             setFormData({
@@ -113,12 +129,11 @@ export default function AdminPage() {
                 bannerUrl: "",
             });
             setPreview(null);
-            setBannerFile(null);
             setEditMode(false);
             await fetchEvents();
         } catch (err) {
-            console.error(err);
-            toast.error("Error saving event");
+            console.error("❌ Save error:", err);
+            toast.error("Failed to save event");
         } finally {
             setUploading(false);
         }
@@ -143,25 +158,8 @@ export default function AdminPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Delete this event?")) return;
         await deleteDoc(doc(db, "events", id));
-        toast.success("Deleted");
+        toast.success("✅ Event deleted");
         await fetchEvents();
-    };
-
-    // 🖱 Drag & drop + file input
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        const file = e.dataTransfer.files?.[0];
-        if (file && file.type.startsWith("image/")) {
-            setBannerFile(file);
-            setPreview(URL.createObjectURL(file));
-        }
-    };
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setBannerFile(file);
-            setPreview(URL.createObjectURL(file));
-        }
     };
 
     return (
@@ -171,7 +169,7 @@ export default function AdminPage() {
                 <nav className="flex justify-between items-center mb-8 border-b border-gray-700 pb-3">
                     <div className="flex gap-4 text-sm">
                         <a href="/" className="text-gray-300 hover:text-white">Home</a>
-                        <a href="/events" className="text-gray-300 hover:text-white">Events</a>
+                        <a href="/admin/work" className="text-gray-300 hover:text-white">Events log</a>
                         <a href="/admin" className="text-gray-300 hover:text-white font-semibold">Admin</a>
                     </div>
                     <button
@@ -182,7 +180,7 @@ export default function AdminPage() {
                     </button>
                 </nav>
 
-                {/* Form */}
+                {/* Event Form */}
                 <form onSubmit={handleSave} className="bg-gray-800 p-6 rounded-xl mb-8">
                     <h2 className="text-xl font-bold mb-4 text-energy-orange">
                         {editMode ? "Edit Event" : "Add New Event"}
@@ -218,9 +216,13 @@ export default function AdminPage() {
                         />
                     </div>
 
-                    {/* Drag & Drop Upload */}
+                    {/* Drag & Drop Banner */}
                     <div
-                        onDrop={handleDrop}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handleBannerUpload(file);
+                        }}
                         onDragOver={(e) => e.preventDefault()}
                         className="mt-4 border-2 border-dashed border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:bg-gray-700 transition"
                     >
@@ -236,19 +238,19 @@ export default function AdminPage() {
                                 <p className="text-gray-500 text-sm mb-2">or</p>
                                 <label className="cursor-pointer text-emerald-400 underline">
                                     Select a file
-                                    <input type="file" accept="image/*" hidden onChange={handleFileChange} />
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        hidden
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleBannerUpload(file);
+                                        }}
+                                    />
                                 </label>
                             </>
                         )}
                     </div>
-
-                    <input
-                        type="text"
-                        placeholder="...or paste banner URL"
-                        className="w-full mt-4 p-2 rounded bg-gray-700 text-white"
-                        value={formData.bannerUrl}
-                        onChange={(e) => setFormData({ ...formData, bannerUrl: e.target.value })}
-                    />
 
                     <textarea
                         placeholder="Event Description"
@@ -264,7 +266,7 @@ export default function AdminPage() {
                             uploading ? "bg-gray-500 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"
                         }`}
                     >
-                        {uploading ? "Uploading..." : editMode ? "Update Event" : "Add Event"}
+                        {uploading ? "Saving..." : editMode ? "Update Event" : "Add Event"}
                     </button>
                 </form>
 
