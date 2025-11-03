@@ -7,7 +7,8 @@ export default function ClientWrapper({ children }: { children: ReactNode }) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
+        const timeout = requestAnimationFrame(() => setMounted(true));
+        return () => cancelAnimationFrame(timeout);
     }, []);
 
     // Prevent hydration mismatch

@@ -48,7 +48,7 @@ export default function EventsPage() {
                     transition={{ duration: 0.5 }}
                     className="w-full max-w-md"
                 >
-                    <PurchaseTicket eventName={selectedEvent} />
+                    <PurchaseTicket eventName={selectedEvent} eventId={""} />
                 </motion.div>
             )}
         </motion.div>

@@ -35,7 +35,7 @@ export default function PurchaseManager({ purchases, onDelete }: Props) {
 
     // 🔹 Filter + sort purchases
     const filtered = useMemo(() => {
-        let list = filterEvent === "All"
+        const list = filterEvent === "All"
             ? purchases
             : purchases.filter((p) => p.eventName === filterEvent);
 

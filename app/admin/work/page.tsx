@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import imageCompression from "browser-image-compression";
 import AdminGuard from "@/components/AdminGuard";
-import { uploadToBlob } from "@/lib/vercel-blob";
 
 
 export default function AdminPage() {
@@ -67,19 +66,34 @@ export default function AdminPage() {
                 useWebWorker: true,
             });
 
-            const url = await uploadToBlob(compressed as Blob, "banners");
-            setFormData((prev) => ({ ...prev, bannerUrl: url }));
-            setPreview(url);
+            const formData = new FormData();
+            formData.append("file", compressed, file.name);
+
+            const res = await fetch("/api/blob/upload", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`, // ✅ admin auth
+                },
+                body: formData,
+            });
+
+            const data = await res.json();
+
+            if (!data.url) throw new Error(data.error || "Upload failed");
+
+            setFormData((prev) => ({ ...prev, bannerUrl: data.url }));
+            setPreview(data.url);
             toast.success("✅ Banner uploaded successfully!");
-            return url;
+            return data.url;
         } catch (err) {
-            console.error(err);
+            console.error("❌ Upload failed:", err);
             toast.error("Upload failed");
             return "";
         } finally {
             setUploading(false);
         }
     };
+
 
 
     // ✅ Save / Update Event
