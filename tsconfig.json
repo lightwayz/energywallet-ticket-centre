@@ -22,11 +22,12 @@
         "name": "next"
       }
     ],
+    // ✅ Corrected baseUrl and path alias
+    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     }
+
   },
   "include": [
     "next-env.d.ts",
@@ -34,7 +35,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts",
     ".next\\dev/types/**/*.ts",
     ".next\\dev/types/**/*.ts"
   ],
