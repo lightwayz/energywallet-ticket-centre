@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
         const { buyerEmail, buyerName, eventId, eventName } = await req.json();
         console.log("🟢 [Init] Payment request received for:", { buyerEmail, eventId, eventName });
 
-        // ✅ 1. Fetch actual event price from Firestore
+        // ✅ 1. Fetch event from Firestore
         const eventDoc = await getDoc(doc(db, "events", eventId));
         if (!eventDoc.exists()) {
             console.error("❌ Event not found:", eventId);
@@ -17,16 +17,18 @@ export async function POST(req: NextRequest) {
         }
 
         const eventData = eventDoc.data();
-        let amount = Number(eventData?.price || 0);
+        const rawPrice = eventData?.price ?? 0;
 
+        // 🧩 2. Sanitize numeric values like "₦1,000" or "1000"
+        const amount = Number(String(rawPrice).replace(/[^0-9.]/g, ""));
         if (isNaN(amount) || amount <= 0) {
-            console.error("❌ Invalid event amount:", eventData?.price);
+            console.error("❌ Invalid event amount:", rawPrice);
             return NextResponse.json({ message: "Invalid event amount" }, { status: 400 });
         }
 
         console.log("✅ Using ticket price:", amount);
 
-        // ✅ 2. Prepare Monnify credentials
+        // ✅ 3. Validate Monnify environment config
         const baseUrl = process.env.MONNIFY_BASE_URL!;
         const apiKey = process.env.MONNIFY_API_KEY!;
         const secretKey = process.env.MONNIFY_SECRET_KEY!;
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
 
         const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
 
-        // ✅ 3. Get Monnify access token
+        // ✅ 4. Get Monnify access token
         const tokenRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
             method: "POST",
             headers: {
@@ -47,17 +49,18 @@ export async function POST(req: NextRequest) {
                 "Content-Type": "application/json",
             },
         });
-        const tokenData = await tokenRes.json();
 
-        if (!tokenData?.responseBody?.accessToken) {
+        const tokenData = await tokenRes.json();
+        const accessToken = tokenData?.responseBody?.accessToken;
+
+        if (!accessToken) {
             console.error("❌ Failed to get Monnify access token:", tokenData);
             return NextResponse.json({ message: "Failed to authorize Monnify" }, { status: 500 });
         }
 
-        const accessToken = tokenData.responseBody.accessToken;
         console.log("✅ Monnify token acquired.");
 
-        // ✅ 4. Initialize Monnify transaction
+        // ✅ 5. Initialize Monnify transaction
         const paymentReference = `TICKET-${eventId}-${Date.now()}`;
         const body = {
             amount,
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
         const initData = await initRes.json();
         console.log("📥 Monnify init response:", initData);
 
-        // ✅ 5. If Monnify succeeded
+        // ✅ 6. Handle success
         if (initData?.requestSuccessful && initData?.responseBody?.checkoutUrl) {
             const checkoutUrl = initData.responseBody.checkoutUrl;
 
@@ -103,13 +106,20 @@ export async function POST(req: NextRequest) {
 
             console.log("✅ Purchase recorded, returning checkout URL.");
             return NextResponse.json({ checkoutUrl });
-        } else {
-            console.error("❌ Monnify Init Error:", initData);
-            return NextResponse.json({ message: "Monnify init failed", raw: initData }, { status: 500 });
         }
+
+        // ❌ If Monnify fails
+        console.error("❌ Monnify Init Error:", initData);
+        return NextResponse.json(
+            { message: "Monnify init failed", raw: initData },
+            { status: 500 }
+        );
     } catch (error: any) {
         console.error("❌ Payment Init Error:", error);
-        return NextResponse.json({ message: "Internal Server Error", error: error.message }, { status: 500 });
+        return NextResponse.json(
+            { message: "Internal Server Error", error: error.message },
+            { status: 500 }
+        );
     }
 }
 
