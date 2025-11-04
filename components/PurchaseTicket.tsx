@@ -1,3 +1,5 @@
+// noinspection JSUnusedLocalSymbols,ES6ShorthandObjectProperty
+
 "use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence, easeOut } from "framer-motion";
@@ -5,43 +7,61 @@ import { fadeInUp } from "@/lib/motion";
 import { CheckCircle } from "lucide-react";
 import { generateTicketPDF } from "@/lib/ticketUtils";
 
-export default function PurchaseTicket({ eventId, eventName }: { eventId: string; eventName: string }) {
+// noinspection JSFunctionExpressionToArrowFunction
+export default function PurchaseTicket({
+                                           eventId,
+                                           eventName,
+                                           price,
+                                       }: {
+    eventId: string;
+    eventName: string;
+    price: number | string;
+}) {
+ {
     const [loading, setLoading] = useState(false);
     const [ticketCode, setTicketCode] = useState("");
     const [showPayment, setShowPayment] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const handlePurchase = async () => {
-        if (loading) return;
-        setLoading(true);
+     const handlePurchase = async () => {
+         if (loading) return;
+         setLoading(true);
 
-        try {
-            const res = await fetch("/api/payment/init", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    buyerName: "Guest User",
-                    buyerEmail: "info@energywalletng.com",
-                    eventId,
-                    eventName,
-                }),
-            });
+         try {
+             const cleanAmount = Number(String(price).replace(/[^0-9.]/g, ""));
+             if (isNaN(cleanAmount) || cleanAmount <= 0) {
+                 alert("Invalid ticket price");
+                 return;
+             }
 
-            const data = await res.json();
+             const res = await fetch("/api/payment/init", {
+                 method: "POST",
+                 headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify({
+                     buyerName: "Guest User",
+                     buyerEmail: "info@energywalletng.com",
+                     eventId,
+                     eventName,
+                     amount: cleanAmount, // ✅ send the actual price
+                 }),
+             });
 
-            if (!data?.checkoutUrl) throw new Error(data?.message || "No checkout URL returned");
+             const data = await res.json();
 
-            // ✅ Redirect to Monnify payment
-            window.location.href = data.checkoutUrl;
-        } catch (err) {
-            console.error("Payment init error:", err);
-            alert("Failed to initiate payment. Please check event ID or try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
+             if (!data?.checkoutUrl) throw new Error(data?.message || "No checkout URL returned");
 
-    const handleDownloadPDF = async () => {
+             // ✅ Redirect to Monnify payment
+             window.location.href = data.checkoutUrl;
+         } catch (err) {
+             console.error("Payment init error:", err);
+             alert("Failed to initiate payment. Please check event ID or try again.");
+         } finally {
+             setLoading(false);
+         }
+     };
+
+
+     const handleDownloadPDF = async () => {
         const reference = `EW-${Math.floor(100000 + Math.random() * 900000)}`;
         setTicketCode(reference);
         setShowSuccess(true);
@@ -103,4 +123,4 @@ export default function PurchaseTicket({ eventId, eventName }: { eventId: string
             </AnimatePresence>
         </motion.div>
     );
-}
+}}
