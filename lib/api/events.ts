@@ -1,3 +1,5 @@
+// noinspection JSUnusedGlobalSymbols
+
 import { db } from "@/lib/firebase";
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, Timestamp } from "firebase/firestore";
 

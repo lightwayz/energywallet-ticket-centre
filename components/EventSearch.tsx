@@ -7,37 +7,45 @@ import EventList from "@/components/EventList";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
+type FirestoreEvent = {
+    id: string;
+    title: string;
+    description?: string;
+    location?: string;
+    price?: string | number;
+    date?: any;
+};
+
 export default function EventSearch() {
     const [showList, setShowList] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-    const [events, setEvents] = useState<
-        { id: string; name: string; description?: string; location?: string; price?: number }[]
-    >([]);
+    const [selectedEvent, setSelectedEvent] = useState<FirestoreEvent | null>(null);
+    const [events, setEvents] = useState<FirestoreEvent[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 🔥 Fetch events dynamically from Firestore
+    // 🔥 Fetch events from Firestore in real-time
     useEffect(() => {
         const q = query(collection(db, "events"), orderBy("date", "asc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedEvents = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                name: doc.data().title || doc.data().name || "Unnamed Event",
-                description: doc.data().description || "No description provided.",
-                location: doc.data().location || "Unknown",
-                price: doc.data().price || 0,
-                date: doc.data().date,
-            }));
-            setEvents(fetchedEvents);
+            const fetched = snapshot.docs.map((doc) => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    title: data.title || data.name || "Unnamed Event",
+                    description: data.description || "No description available.",
+                    location: data.location || "Unknown",
+                    price: Number(String(data.price).replace(/[^0-9.]/g, "")) || 0, // ✅ sanitize price
+                    date: data.date,
+                };
+            });
+            setEvents(fetched);
             setLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
 
-    const buttonLabel = loading ? "Loading Events..." : "Search Event";
-
-    const handleEventSelect = (eventName: string) => {
-        setSelectedEvent(eventName);
+    const handleEventSelect = (event: FirestoreEvent) => {
+        setSelectedEvent(event);
         setShowList(false);
     };
 
@@ -48,15 +56,14 @@ export default function EventSearch() {
 
     return (
         <div className="text-center py-12">
+            {/* 🟠 Header */}
             <motion.h1
                 className="text-3xl md:text-4xl font-bold mb-8 tracking-widest"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
             >
-        <span className=" from-white to-[#white] )]">
-          UPCOMING&nbsp;EVENTS
-        </span>
+                <span className="text-energy-orange">UPCOMING EVENTS ⚡</span>
             </motion.h1>
 
             {/* 🔘 Main Search Button */}
@@ -72,12 +79,12 @@ export default function EventSearch() {
                             loading ? "opacity-60 cursor-not-allowed" : ""
                         }`}
                     >
-                        {buttonLabel}
+                        {loading ? "Loading Events..." : "Search Event"}
                     </motion.button>
                 </div>
             )}
 
-            {/* 🧾 Fullscreen Modal List */}
+            {/* 🧾 Modal Event List */}
             <AnimatePresence>
                 {showList && (
                     <motion.div
@@ -116,24 +123,32 @@ export default function EventSearch() {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {events.map((event) => {
-                                        // @ts-ignore
-                                        const formattedDate = !event.date?.toDate ? "No date available" : event.date.toDate().toLocaleString();
+                                        const formattedDate = event.date?.toDate
+                                            ? event.date.toDate().toLocaleString()
+                                            : "No date available";
+
                                         return (
                                             <div
                                                 key={event.id}
-                                                onClick={() => handleEventSelect(event.name)}
+                                                onClick={() => handleEventSelect(event)}
                                                 className="cursor-pointer bg-white/10 hover:bg-white/20 p-5 rounded-xl shadow-md transition border border-gray-700"
                                             >
                                                 <h3 className="text-xl font-semibold text-energy-orange mb-2">
-                                                    {event.name}
+                                                    {event.title}
                                                 </h3>
                                                 <p className="text-gray-300 mb-3 text-sm">
                                                     {event.description}
                                                 </p>
                                                 <div className="text-gray-400 text-xs space-y-1">
-                                                    <p><strong>Date:</strong> {formattedDate}</p>
-                                                    <p><strong>Location:</strong> {event.location}</p>
-                                                    <p><strong>Price:</strong> ₦{event.price}</p>
+                                                    <p>
+                                                        <strong>Date:</strong> {formattedDate}
+                                                    </p>
+                                                    <p>
+                                                        <strong>Location:</strong> {event.location}
+                                                    </p>
+                                                    <p>
+                                                        <strong>Price:</strong> ₦{event.price}
+                                                    </p>
                                                 </div>
                                             </div>
                                         );
@@ -148,7 +163,7 @@ export default function EventSearch() {
             {/* 🎟 Purchase Ticket Section */}
             {selectedEvent && (
                 <motion.div
-                    key={selectedEvent}
+                    key={selectedEvent.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -156,26 +171,27 @@ export default function EventSearch() {
                     className="text-center mt-8"
                 >
                     <h2 className="text-2xl font-semibold mb-6 text-energy-orange">
-                        {selectedEvent}
+                        {selectedEvent.title}
                     </h2>
                     <PurchaseTicket
-                        eventName={selectedEvent}
-                        eventId={selectedEvent.replace(/\s/g, "-").toLowerCase()}
+                        eventName={selectedEvent.title}
+                        eventId={selectedEvent.id}
+                        price={selectedEvent.price || 0}
                     />
                 </motion.div>
             )}
 
-            {/* 📋 Event Details (optional) */}
+            {/* 📋 Event Details (optional extra info) */}
             {selectedEvent && (
                 <motion.div
-                    key={`list-${selectedEvent}`}
+                    key={`list-${selectedEvent.id}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.4 }}
                     className="mt-12"
                 >
-                    <EventList selectedEvent={selectedEvent} />
+                    <EventList selectedEvent={selectedEvent.title} />
                 </motion.div>
             )}
         </div>

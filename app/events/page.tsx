@@ -1,12 +1,10 @@
 // noinspection JSIgnoredPromiseFromCall
 
 "use client";
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import PurchaseTicket from "@/components/PurchaseTicket";
 import { getEvents } from "@/lib/api/events";
-
 
 type Event = {
     id: string;
@@ -14,7 +12,7 @@ type Event = {
     location: string;
     date: string;
     description: string;
-    price: number;
+    price: number | string;
 };
 
 export default function EventsPage() {
@@ -25,8 +23,14 @@ export default function EventsPage() {
     useEffect(() => {
         async function fetchEvents() {
             try {
-                const data = await getEvents();
-                setEvents(data);
+                const rawData = await getEvents();
+
+                const parsed = rawData.map((e: any) => ({
+                    ...e,
+                    price: Number(String(e.price).replace(/[^0-9.]/g, "")) || 0, // ✅ sanitize here
+                }));
+
+                setEvents(parsed);
             } catch (err) {
                 console.error("Failed to load events", err);
             }
@@ -65,14 +69,17 @@ export default function EventsPage() {
                     >
                         <h2 className="text-xl font-semibold text-energy-orange">{event.title}</h2>
                         <p className="text-gray-400 text-sm mb-1">📍 {event.location}</p>
-                        <p className="text-gray-400 text-sm mb-1">🗓️ {new Date(event.date).toLocaleDateString()}</p>
+                        <p className="text-gray-400 text-sm mb-1">
+                            🗓️ {new Date(event.date).toLocaleDateString()}
+                        </p>
                         <p className="text-gray-400 text-sm">💰 ₦{event.price}</p>
                     </motion.div>
                 ))}
             </div>
 
             {showPurchase && selectedEvent && (
-                <motion.div id="purchase-ticket"
+                <motion.div
+                    id="purchase-ticket"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5 }}
