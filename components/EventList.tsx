@@ -104,18 +104,18 @@ export default function EventList({ selectedEvent }: EventListProps) {
 
     return (
         <>
-            <div className="flex justify-end mb-4">
-                {role === "admin" && ( // ✅ check a role from context
-                    <motion.button
-                        onClick={() => setModalOpen(true)}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-400 transition"
-                    >
-                        Add Ticket
-                    </motion.button>
-                )}
-            </div>
+            {/*<div className="flex justify-end mb-4">*/}
+            {/*    {role === "admin" && ( // ✅ check a role from context*/}
+            {/*        <motion.button*/}
+            {/*            onClick={() => setModalOpen(true)}*/}
+            {/*            whileHover={{ scale: 1.05 }}*/}
+            {/*            whileTap={{ scale: 0.95 }}*/}
+            {/*            className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-400 transition"*/}
+            {/*        >*/}
+            {/*            Add Ticket*/}
+            {/*        </motion.button>*/}
+            {/*    )}*/}
+            {/*</div>*/}
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
