@@ -1,128 +1,31 @@
+// app/api/payment/webhook/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-
-export const dynamic = "force-dynamic";
+import { doc, updateDoc } from "firebase/firestore";
 
 export async function POST(req: NextRequest) {
     try {
-        const { buyerEmail, buyerName, eventId, eventName } = await req.json();
-        console.log("🟢 [Init] Payment request received for:", { buyerEmail, eventId, eventName });
+        const body = await req.json();
 
-        // ✅ 1. Fetch event from Firestore
-        const eventDoc = await getDoc(doc(db, "events", eventId));
-        if (!eventDoc.exists()) {
-            console.error("❌ Event not found:", eventId);
-            return NextResponse.json({ message: "Event not found" }, { status: 404 });
-        }
+        const paymentStatus = body?.eventData?.paymentStatus;
+        const paymentRef = body?.eventData?.paymentReference;
 
-        const eventData = eventDoc.data();
-        const rawPrice = eventData?.price ?? 0;
+        console.log("🔔 Monnify webhook received:", body);
 
-        // 🧩 2. Sanitize numeric values like "₦1,000" or "1000"
-        const amount = Number(String(rawPrice).replace(/[^0-9.]/g, ""));
-        if (isNaN(amount) || amount <= 0) {
-            console.error("❌ Invalid event amount:", rawPrice);
-            return NextResponse.json({ message: "Invalid event amount" }, { status: 400 });
-        }
+        if (paymentStatus === "PAID") {
+            const purchaseQuery = doc(db, "purchases", paymentRef); // You may need to query by field if not using doc ID
 
-        console.log("✅ Using ticket price:", amount);
-
-        // ✅ 3. Validate Monnify environment config
-        const baseUrl = process.env.MONNIFY_BASE_URL!;
-        const apiKey = process.env.MONNIFY_API_KEY!;
-        const secretKey = process.env.MONNIFY_SECRET_KEY!;
-        const contractCode = process.env.MONNIFY_CONTRACT_CODE!;
-
-        if (!baseUrl || !apiKey || !secretKey || !contractCode) {
-            console.error("❌ Missing Monnify environment variables!");
-            return NextResponse.json({ message: "Missing Monnify config" }, { status: 500 });
-        }
-
-        const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
-
-        // ✅ 4. Get Monnify access token
-        const tokenRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
-            method: "POST",
-            headers: {
-                Authorization: `Basic ${authToken}`,
-                "Content-Type": "application/json",
-            },
-        });
-
-        const tokenData = await tokenRes.json();
-        const accessToken = tokenData?.responseBody?.accessToken;
-
-        if (!accessToken) {
-            console.error("❌ Failed to get Monnify access token:", tokenData);
-            return NextResponse.json({ message: "Failed to authorize Monnify" }, { status: 500 });
-        }
-
-        console.log("✅ Monnify token acquired.");
-
-        // ✅ 5. Initialize Monnify transaction
-        const paymentReference = `TICKET-${eventId}-${Date.now()}`;
-        const body = {
-            amount,
-            customerName: buyerName,
-            customerEmail: buyerEmail,
-            paymentReference,
-            paymentDescription: `Ticket for ${eventName}`,
-            currencyCode: "NGN",
-            contractCode,
-            redirectUrl: "https://energywallet-ticket-centre.vercel.app/verify",
-            paymentMethods: ["CARD", "ACCOUNT_TRANSFER"],
-            metadata: { eventId, eventName },
-        };
-
-        console.log("📤 Sending to Monnify:", body);
-
-        const initRes = await fetch(`${baseUrl}/api/v1/merchant/transactions/init-transaction`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-        });
-
-        const initData = await initRes.json();
-        console.log("📥 Monnify init response:", initData);
-
-        // ✅ 6. Handle success
-        if (initData?.requestSuccessful && initData?.responseBody?.checkoutUrl) {
-            const checkoutUrl = initData.responseBody.checkoutUrl;
-
-            await addDoc(collection(db, "purchases"), {
-                userEmail: buyerEmail,
-                userName: buyerName,
-                eventId,
-                eventName,
-                amount,
-                paymentStatus: "PENDING",
-                paymentRef: paymentReference,
-                createdAt: serverTimestamp(),
+            await updateDoc(purchaseQuery, {
+                paymentStatus: "PAID",
+                paidAt: new Date(),
             });
 
-            console.log("✅ Purchase recorded, returning checkout URL.");
-            return NextResponse.json({ checkoutUrl });
+            return NextResponse.json({ message: "Webhook processed" });
         }
 
-        // ❌ If Monnify fails
-        console.error("❌ Monnify Init Error:", initData);
-        return NextResponse.json(
-            { message: "Monnify init failed", raw: initData },
-            { status: 500 }
-        );
-    } catch (error: any) {
-        console.error("❌ Payment Init Error:", error);
-        return NextResponse.json(
-            { message: "Internal Server Error", error: error.message },
-            { status: 500 }
-        );
+        return NextResponse.json({ message: "Ignored non-paid status" }, { status: 200 });
+    } catch (err: any) {
+        console.error("❌ Webhook error:", err);
+        return NextResponse.json({ message: "Webhook failed" }, { status: 500 });
     }
-}
-
-export async function GET() {
-    return NextResponse.json({ message: "Method not allowed" }, { status: 405 });
 }
