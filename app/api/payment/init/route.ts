@@ -4,9 +4,16 @@ import { db } from "@/lib/firebase";
 
 export const dynamic = "force-dynamic";
 
+type PaymentPayload = {
+    buyerEmail: string;
+    buyerName: string;
+    eventId: string;
+    eventName: string;
+};
+
 export async function POST(req: NextRequest) {
     try {
-        const { buyerEmail, buyerName, eventId, eventName } = await req.json();
+        const { buyerEmail, buyerName, eventId, eventName }: PaymentPayload = await req.json();
 
         // ✅ 1. Get ticket price from Firestore
         const eventRef = doc(db, "events", eventId);
