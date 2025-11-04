@@ -109,7 +109,7 @@ export default function TicketCentrePage() {
                     transition={{ duration: 0.4 }}
                     className="text-center"
                 >
-                    <PurchaseTicket eventName={selectedEvent.title} eventId={selectedEvent.id} />
+                    <PurchaseTicket eventName={selectedEvent.title} eventId={selectedEvent.id} price={""} />
                 </motion.div>
             )}
 
