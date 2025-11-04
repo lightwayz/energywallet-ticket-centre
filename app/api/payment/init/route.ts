@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export const dynamic = "force-dynamic";
@@ -9,46 +9,35 @@ type PaymentPayload = {
     buyerName: string;
     eventId: string;
     eventName: string;
+    amount: number;
 };
 
 export async function POST(req: NextRequest) {
     try {
-        const { buyerEmail, buyerName, eventId, eventName }: PaymentPayload = await req.json();
+        const { buyerEmail, buyerName, eventId, eventName, amount }: PaymentPayload = await req.json();
 
-        // ✅ 1. Get ticket price from Firestore
-        const eventRef = doc(db, "events", eventId);
-        const eventSnap = await getDoc(eventRef);
+        console.log("🟢 Payment request received:", { buyerEmail, eventId, eventName, amount });
 
-        if (!eventSnap.exists()) {
-            console.error("❌ Event not found:", eventId);
-            return NextResponse.json({ message: "Event not found" }, { status: 404 });
-        }
-
-        const eventData = eventSnap.data();
-        const rawPrice = eventData?.price;
-        const amount = Number(String(rawPrice).replace(/[^0-9.]/g, ""));
-
+        // ✅ Skip Firestore — validate amount is okay
         if (isNaN(amount) || amount <= 0) {
-            console.error("❌ Invalid event amount:", rawPrice);
-            return NextResponse.json({ message: "Invalid event amount" }, { status: 400 });
+            console.error("❌ Invalid amount:", amount);
+            return NextResponse.json({ message: "Invalid amount" }, { status: 400 });
         }
 
-        console.log("✅ Using event price:", amount);
-
-        // ✅ 2. Monnify credentials
+        // ✅ Monnify credentials
         const baseUrl = process.env.MONNIFY_BASE_URL!;
         const apiKey = process.env.MONNIFY_API_KEY!;
         const secretKey = process.env.MONNIFY_SECRET_KEY!;
         const contractCode = process.env.MONNIFY_CONTRACT_CODE!;
 
         if (!baseUrl || !apiKey || !secretKey || !contractCode) {
-            console.error("❌ Missing Monnify environment variables!");
+            console.error("❌ Missing Monnify env config");
             return NextResponse.json({ message: "Missing Monnify config" }, { status: 500 });
         }
 
         const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
 
-        // ✅ 3. Get Monnify token
+        // ✅ Step 1: Get Monnify token
         const tokenRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
             method: "POST",
             headers: {
@@ -58,18 +47,15 @@ export async function POST(req: NextRequest) {
         });
 
         const tokenData = await tokenRes.json();
-        const accessToken = tokenData.responseBody?.accessToken;
+        const accessToken = tokenData?.responseBody?.accessToken;
 
         if (!accessToken) {
-            console.error("❌ Monnify auth failed:", tokenData);
+            console.error("❌ Failed to get Monnify access token:", tokenData);
             return NextResponse.json({ message: "Failed to authorize Monnify" }, { status: 500 });
         }
 
-        console.log("✅ Monnify token acquired");
-
-        // ✅ 4. Initialize Monnify transaction
+        // ✅ Step 2: Initialize payment
         const paymentReference = `TICKET-${eventId}-${Date.now()}`;
-
         const initRes = await fetch(`${baseUrl}/api/v1/merchant/transactions/init-transaction`, {
             method: "POST",
             headers: {
@@ -92,7 +78,6 @@ export async function POST(req: NextRequest) {
 
         const initData = await initRes.json();
 
-        // ✅ 5. Save pending purchase
         if (initData?.requestSuccessful && initData?.responseBody?.checkoutUrl) {
             await addDoc(collection(db, "purchases"), {
                 userEmail: buyerEmail,
@@ -105,15 +90,15 @@ export async function POST(req: NextRequest) {
                 createdAt: serverTimestamp(),
             });
 
-            console.log("✅ Purchase created, redirecting to Monnify checkout");
+            console.log("✅ Purchase recorded. Redirecting to Monnify.");
             return NextResponse.json({ checkoutUrl: initData.responseBody.checkoutUrl });
         }
 
         console.error("❌ Monnify init failed:", initData);
-        return NextResponse.json({ message: "Monnify init failed" }, { status: 500 });
+        return NextResponse.json({ message: "Monnify init failed", raw: initData }, { status: 500 });
     } catch (err: any) {
         console.error("❌ Payment Init Error:", err);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ message: "Internal Server Error", error: err.message }, { status: 500 });
     }
 }
 
