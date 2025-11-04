@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
+
 export async function GET() {
     try {
         const snapshot = await adminDb.collection("events").orderBy("date", "asc").get();

@@ -3,21 +3,17 @@ import React, { useState } from "react";
 import { motion, AnimatePresence, easeOut } from "framer-motion";
 import { fadeInUp } from "@/lib/motion";
 import { CheckCircle } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { generateTicketPDF } from "@/lib/ticketUtils";
 
-export default function PurchaseTicket({ eventId, eventName }: { eventId: string; eventName: string; }) {
-    const [ticketCode, setTicketCode] = useState("");
+export default function PurchaseTicket({ eventId, eventName }: { eventId: string; eventName: string }) {
     const [loading, setLoading] = useState(false);
+    const [ticketCode, setTicketCode] = useState("");
     const [showPayment, setShowPayment] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
     const handlePurchase = async () => {
         if (loading) return;
         setLoading(true);
-        const generatedCode = `EW-${Math.floor(100000 + Math.random() * 900000)}`;
-        setTicketCode(generatedCode);
 
         try {
             const res = await fetch("/api/payment/init", {
@@ -33,34 +29,28 @@ export default function PurchaseTicket({ eventId, eventName }: { eventId: string
 
             const data = await res.json();
 
-            if (!data?.checkoutUrl) throw new Error("No checkout URL returned");
+            if (!data?.checkoutUrl) throw new Error(data?.message || "No checkout URL returned");
 
-            // ✅ Record temporary payment
-            await addDoc(collection(db, "payments"), {
-                eventId,
-                eventName,
-                buyerEmail: "info@energywalletng.com",
-                buyerName: "Guest User",
-                status: "PENDING",
-                ticketCode: generatedCode,
-                createdAt: serverTimestamp(),
-            });
-
+            // ✅ Redirect to Monnify payment
             window.location.href = data.checkoutUrl;
         } catch (err) {
             console.error("Payment init error:", err);
-            alert("Failed to initiate payment. Please try again.");
+            alert("Failed to initiate payment. Please check event ID or try again.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleDownloadPDF = async () => {
+        const reference = `EW-${Math.floor(100000 + Math.random() * 900000)}`;
+        setTicketCode(reference);
+        setShowSuccess(true);
+
         try {
             const bytes = await generateTicketPDF({
                 name: "Guest User",
                 eventName,
-                reference: ticketCode,
+                reference,
             });
 
             // @ts-ignore
@@ -68,7 +58,7 @@ export default function PurchaseTicket({ eventId, eventName }: { eventId: string
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${eventName.replace(/\s/g, "_")}_${ticketCode}.pdf`;
+            a.download = `${eventName.replace(/\s/g, "_")}_${reference}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {

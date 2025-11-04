@@ -27,7 +27,7 @@ export const getEvents = async () => {
         return {
             id: doc.id,
             title: data.title || "",
-            date: data.date || "",
+            date: data.date?.toDate().toISOString() || "",
             location: data.location || "",
             price: data.price || 0,
             description: data.description || "",

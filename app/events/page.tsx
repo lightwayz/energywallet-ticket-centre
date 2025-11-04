@@ -1,25 +1,47 @@
+// noinspection JSIgnoredPromiseFromCall
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import EventSearchForm from "@/components/EventSearchForm";
 import PurchaseTicket from "@/components/PurchaseTicket";
+import { getEvents } from "@/lib/api/events";
 
+
+type Event = {
+    id: string;
+    title: string;
+    location: string;
+    date: string;
+    description: string;
+    price: number;
+};
 
 export default function EventsPage() {
-    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+    const [events, setEvents] = useState<Event[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [showPurchase, setShowPurchase] = useState(false);
 
+    useEffect(() => {
+        async function fetchEvents() {
+            try {
+                const data = await getEvents();
+                setEvents(data);
+            } catch (err) {
+                console.error("Failed to load events", err);
+            }
+        }
 
+        fetchEvents();
+    }, []);
 
-    const handleSelectEvent = (event: string) => {
+    const handleSelectEvent = (event: Event) => {
         setSelectedEvent(event);
-        setShowPurchase(false);
-    };
-
-    const handlePurchaseClick = () => {
-        if (!selectedEvent) return;
         setShowPurchase(true);
+
+        setTimeout(() => {
+            document.getElementById("purchase-ticket")?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
     };
 
     return (
@@ -33,22 +55,30 @@ export default function EventsPage() {
                 Energy Events Portal ⚡
             </h1>
 
-            <div className="w-full max-w-md mb-8">
-                <EventSearchForm
-                    selectedEvent={selectedEvent}
-                    onSelectEvent={handleSelectEvent}
-                    onPurchaseClick={handlePurchaseClick}
-                />
+            <div className="grid gap-4 w-full max-w-3xl mb-10">
+                {events.map((event) => (
+                    <motion.div
+                        key={event.id}
+                        whileHover={{ scale: 1.03 }}
+                        className="bg-gray-800 p-6 rounded-xl shadow-lg cursor-pointer hover:bg-gray-700 transition"
+                        onClick={() => handleSelectEvent(event)}
+                    >
+                        <h2 className="text-xl font-semibold text-energy-orange">{event.title}</h2>
+                        <p className="text-gray-400 text-sm mb-1">📍 {event.location}</p>
+                        <p className="text-gray-400 text-sm mb-1">🗓️ {new Date(event.date).toLocaleDateString()}</p>
+                        <p className="text-gray-400 text-sm">💰 ₦{event.price}</p>
+                    </motion.div>
+                ))}
             </div>
 
             {showPurchase && selectedEvent && (
-                <motion.div
+                <motion.div id="purchase-ticket"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5 }}
                     className="w-full max-w-md"
                 >
-                    <PurchaseTicket eventName={selectedEvent} eventId={""} />
+                    <PurchaseTicket eventName={selectedEvent.title} eventId={selectedEvent.id} />
                 </motion.div>
             )}
         </motion.div>
