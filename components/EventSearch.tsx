@@ -1,42 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence, easeOut } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import PurchaseTicket from "@/components/PurchaseTicket";
-import EventList from "@/components/EventList";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
-type FirestoreEvent = {
-    id: string;
-    title: string;
-    description?: string;
-    location?: string;
-    price?: string | number;
-    date?: any;
-};
-
 export default function EventSearch() {
     const [showList, setShowList] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState<FirestoreEvent | null>(null);
-    const [events, setEvents] = useState<FirestoreEvent[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+    const [events, setEvents] = useState<
+        { id: string; name: string; description?: string; location?: string; price?: number }[]
+    >([]);
     const [loading, setLoading] = useState(true);
 
-    // 🔥 Fetch events from Firestore in real-time
     useEffect(() => {
         const q = query(collection(db, "events"), orderBy("date", "asc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetched = snapshot.docs.map((doc) => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    title: data.title || data.name || "Unnamed Event",
-                    description: data.description || "No description available.",
-                    location: data.location || "Unknown",
-                    price: Number(String(data.price).replace(/[^0-9.]/g, "")) || 0, // ✅ sanitize price
-                    date: data.date,
-                };
-            });
+            const fetched = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                name: doc.data().title || "Untitled Event",
+                description: doc.data().description || "No description provided",
+                location: doc.data().location || "Unknown",
+                price: Number(String(doc.data().price || "0").replace(/[^0-9.]/g, "")),
+                date: doc.data().date,
+            }));
             setEvents(fetched);
             setLoading(false);
         });
@@ -44,156 +32,163 @@ export default function EventSearch() {
         return () => unsubscribe();
     }, []);
 
-    const handleEventSelect = (event: FirestoreEvent) => {
-        setSelectedEvent(event);
+    const handleEventSelect = (eventName: string) => {
+        setSelectedEvent(eventName);
         setShowList(false);
     };
 
-    const buttonVariants = {
-        inactive: { scale: 1, transition: { duration: 0.2, ease: easeOut } },
-        active: { scale: 1.05, transition: { duration: 0.2, ease: easeOut } },
+    // 🌀 3D parallax background
+    const x = useMotionValue(0.5);
+    const y = useMotionValue(0.5);
+    const rotateX = useTransform(y, [0, 1], [10, -10]);
+    const rotateY = useTransform(x, [0, 1], [-10, 10]);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const px = (e.clientX - left) / width;
+        const py = (e.clientY - top) / height;
+        x.set(px);
+        y.set(py);
     };
 
-    return (
-        <div className="text-center py-12">
-            {/* 🟠 Header */}
-            <motion.h1
-                className="text-3xl md:text-4xl font-bold mb-8 tracking-widest"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-            >
-                <span className="text-energy-orange">UPCOMING EVENTS ⚡</span>
-            </motion.h1>
+    const handleMouseLeave = () => {
+        x.set(0.5);
+        y.set(0.5);
+    };
 
-            {/* 🔘 Main Search Button */}
-            {!selectedEvent && (
-                <div className="my-10">
+    const buttonLabel = loading ? "Loading Events..." : "View Events";
+
+    return (
+        <div
+            className="relative min-h-screen text-center py-12 overflow-hidden flex flex-col items-center justify-center"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+        >
+            {/* 🌌 Background */}
+            <motion.div
+                className="absolute inset-0 bg-cover bg-center z-0"
+                style={{
+                    backgroundImage: "url('/eventback.jpg')",
+                    opacity: 0.25,
+                    rotateX,
+                    rotateY,
+                    transformPerspective: 1000,
+                }}
+                transition={{ type: "spring", stiffness: 60, damping: 20 }}
+            />
+
+            <motion.div
+                className="absolute inset-0 bg-black/65 z-0"
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 0.65 }}
+                transition={{ duration: 1.2 }}
+            />
+
+            {/* Foreground */}
+            <div className="relative z-10 max-w-3xl mx-auto px-4 backdrop-blur-sm">
+                <motion.h1
+                    className="text-3xl md:text-4xl font-bold mb-8 tracking-widest text-energy-orange drop-shadow-lg"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    UPCOMING&nbsp;EVENTS
+                </motion.h1>
+
+                {!selectedEvent && (
                     <motion.button
-                        variants={buttonVariants}
-                        initial="inactive"
-                        animate={showList ? "active" : "inactive"}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => !loading && setShowList(true)}
                         disabled={loading}
-                        className={`px-6 py-3 bg-energy-orange text-energy-black rounded-2xl font-semibold shadow-md focus:outline-none ${
-                            loading ? "opacity-60 cursor-not-allowed" : ""
+                        className={`px-8 py-4 text-lg bg-energy-orange text-energy-black rounded-2xl font-semibold shadow-lg ${
+                            loading ? "opacity-60 cursor-not-allowed" : "hover:bg-orange-400"
                         }`}
                     >
-                        {loading ? "Loading Events..." : "Search Event"}
+                        {buttonLabel}
                     </motion.button>
-                </div>
-            )}
+                )}
 
-            {/* 🧾 Modal Event List */}
-            <AnimatePresence>
-                {showList && (
-                    <motion.div
-                        className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4 overflow-y-auto"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
+                {/* 🎟 Full-screen modal */}
+                <AnimatePresence>
+                    {showList && (
                         <motion.div
-                            className="bg-gray-900 p-6 rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-700 text-white relative"
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            transition={{ duration: 0.3 }}
+                            className="fixed inset-0 bg-black/95 z-50 overflow-y-auto"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
                         >
-                            {/* Modal Header */}
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-semibold text-energy-orange">
-                                    Available Events
-                                </h2>
+                            {/* Frosted floating header */}
+                            <div className="sticky top-0 z-10 backdrop-blur-xl bg-gray-900/80 border-b border-gray-700 px-8 py-6 flex justify-between items-center">
+                                <h2 className="text-3xl font-semibold text-energy-orange">Available Events</h2>
                                 <button
                                     onClick={() => setShowList(false)}
-                                    className="text-gray-400 hover:text-white transition"
+                                    className="text-gray-400 hover:text-white text-2xl transition"
                                 >
                                     ✕
                                 </button>
                             </div>
 
-                            {/* Event Grid */}
-                            {loading ? (
-                                <div className="text-gray-400 text-center py-6">
-                                    Loading events...
-                                </div>
-                            ) : events.length === 0 ? (
-                                <p className="text-gray-400 text-center">No events available.</p>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {events.map((event) => {
-                                        const formattedDate = event.date?.toDate
-                                            ? event.date.toDate().toLocaleString()
-                                            : "No date available";
-
-                                        return (
-                                            <div
-                                                key={event.id}
-                                                onClick={() => handleEventSelect(event)}
-                                                className="cursor-pointer bg-white/10 hover:bg-white/20 p-5 rounded-xl shadow-md transition border border-gray-700"
-                                            >
-                                                <h3 className="text-xl font-semibold text-energy-orange mb-2">
-                                                    {event.title}
+                            {/* Full-screen event grid */}
+                            <div className="p-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                                {loading ? (
+                                    <p className="text-gray-400 text-center col-span-full">
+                                        Loading events...
+                                    </p>
+                                ) : events.length === 0 ? (
+                                    <p className="text-gray-400 text-center col-span-full">
+                                        No events available.
+                                    </p>
+                                ) : (
+                                    events.map((event) => (
+                                        <div
+                                            key={event.id}
+                                            onClick={() => handleEventSelect(event.name)}
+                                            className="cursor-pointer bg-white/10 hover:bg-white/20 p-6 rounded-2xl shadow-lg transition border border-gray-700 h-full flex flex-col justify-between"
+                                        >
+                                            <div>
+                                                <h3 className="text-2xl font-semibold text-energy-orange mb-3">
+                                                    {event.name}
                                                 </h3>
-                                                <p className="text-gray-300 mb-3 text-sm">
+                                                <p className="text-gray-300 mb-3 text-sm line-clamp-3">
                                                     {event.description}
                                                 </p>
-                                                <div className="text-gray-400 text-xs space-y-1">
-                                                    <p>
-                                                        <strong>Date:</strong> {formattedDate}
-                                                    </p>
-                                                    <p>
-                                                        <strong>Location:</strong> {event.location}
-                                                    </p>
-                                                    <p>
-                                                        <strong>Price:</strong> ₦{event.price}
-                                                    </p>
-                                                </div>
+                                                <p className="text-gray-400 text-xs">📍 {event.location}</p>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                            <div className="mt-4 text-gray-300 text-sm">
+                                                💰 <strong>₦{event.price}</strong>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>
 
-            {/* 🎟 Purchase Ticket Section */}
-            {selectedEvent && (
-                <motion.div
-                    key={selectedEvent.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.4 }}
-                    className="text-center mt-8"
-                >
-                    <h2 className="text-2xl font-semibold mb-6 text-energy-orange">
-                        {selectedEvent.title}
-                    </h2>
-                    <PurchaseTicket
-                        eventName={selectedEvent.title}
-                        eventId={selectedEvent.id}
-                        price={selectedEvent.price || 0}
-                    />
-                </motion.div>
-            )}
-
-            {/* 📋 Event Details (optional extra info) */}
-            {selectedEvent && (
-                <motion.div
-                    key={`list-${selectedEvent.id}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.4 }}
-                    className="mt-12"
-                >
-                    <EventList selectedEvent={selectedEvent.title} />
-                </motion.div>
-            )}
+                {/* 🧾 Purchase Ticket */}
+                <AnimatePresence>
+                    {selectedEvent && (
+                        <motion.div
+                            key={selectedEvent}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.4 }}
+                            className="mt-12"
+                        >
+                            <h2 className="text-2xl font-semibold mb-6 text-energy-orange drop-shadow-md">
+                                {selectedEvent}
+                            </h2>
+                            <PurchaseTicket
+                                eventName={selectedEvent}
+                                eventId={selectedEvent.replace(/\s/g, "-").toLowerCase()}
+                                price={1000}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 }

@@ -1,9 +1,19 @@
-// app/ClientWrapper.tsx
+// noinspection JSUnusedLocalSymbols,JSFunctionExpressionToArrowFunction,ES6ShorthandObjectProperty
+
 "use client";
 
-import { useEffect, useState, ReactNode } from "react";
+import {useEffect, useState} from "react";
+import AiConcierge from "@/components/AiConcierge";
 
-export default function ClientWrapper({ children }: { children: ReactNode }) {
+interface ClientWrapperProps {
+    children?: undefined
+}
+
+/**
+ * ClientWrapper ensures AiConcierge only mounts client-side,
+ * avoiding hydration mismatch errors.
+ */
+export default function ClientWrapper({children}: ClientWrapperProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -11,8 +21,8 @@ export default function ClientWrapper({ children }: { children: ReactNode }) {
         return () => cancelAnimationFrame(timeout);
     }, []);
 
-    // Prevent hydration mismatch
+    // 🧩 Prevent hydration mismatch
     if (!mounted) return null;
 
-    return <>{children}</>;
+    return <AiConcierge/>;
 }

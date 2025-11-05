@@ -6,10 +6,14 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import EventList from "@/components/EventList";
 import PurchaseTicket from "@/components/PurchaseTicket";
+import dynamic from "next/dynamic";
+
+const ThreeScene = dynamic(() => import("@/components/ThreeScene"), { ssr: false });
 
 type Event = {
     id: string;
     title: string;
+    price?: number | string;
 };
 
 export default function TicketCentrePage() {
@@ -17,12 +21,13 @@ export default function TicketCentrePage() {
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [events, setEvents] = useState<Event[]>([]);
 
-    // 🔹 Fetch events dynamically from Firestore
+    // 🔹 Real-time Firestore listener
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "events"), (snapshot) => {
             const data = snapshot.docs.map((doc) => ({
                 id: doc.id,
                 title: doc.data().title as string,
+                price: doc.data().price || 0,
             }));
             setEvents(data);
         });
@@ -46,32 +51,61 @@ export default function TicketCentrePage() {
 
     const dropdownVariants = {
         hidden: { opacity: 0, y: -10, scale: 0.98 },
-        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.25, ease: easeOut } },
-        exit: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.15 } },
+        visible: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: { duration: 0.25, ease: easeOut },
+        },
+        exit: {
+            opacity: 0,
+            y: -10,
+            scale: 0.95,
+            transition: { duration: 0.15 },
+        },
     };
 
-    const buttonLabel = selectedEvent ? "Purchase Ticket" : "Search Event";
+    const buttonLabel = selectedEvent ? "Purchase Ticket" : "View Events";
 
     return (
         <main className="min-h-screen bg-energy-black text-white px-6 py-12">
+
+            {/* 3-D animated hero */}
+            <div className="max-w-5xl mx-auto mb-10 transition-transform duration-700 ease-out">
+                <ThreeScene />
+            </div>
+
+
             <h1 className="text-3xl font-bold text-center text-energy-orange mb-8">
-                Upcoming Energy Events
+                Upcoming Events
             </h1>
 
-            {/* Dropdown Button */}
-            <div className="relative text-center my-10">
-                <motion.button
-                    variants={buttonVariants}
-                    initial="inactive"
-                    animate={showList ? "active" : "inactive"}
-                    onClick={() => setShowList((prev) => !prev)}
-                    className="px-6 py-3 text-energy-black rounded-2xl font-semibold shadow-md focus:outline-none relative z-40"
-                >
-                    {buttonLabel}
-                </motion.button>
+            {/* Dropdown search button */}
+            <motion.button
+                variants={buttonVariants}
+                initial="inactive"
+                animate={{
+                    rotate: 360,
+                    transition: {
+                        repeat: Infinity,
+                        ease: "linear",
+                        duration: 6,
+                    },
+                }}
+                whileHover={{ scale: 1.1 }}
+                onClick={() => setShowList((prev) => !prev)}
+                className="px-8 py-3 text-white font-bold rounded-2xl shadow-lg focus:outline-none relative z-40
+             bg-gradient-to-r from-[#FF7A00] via-[#FFA500] to-[#FF7A00]
+             border border-[#FFB84D]/30"
+                style={{
+                    boxShadow: "0 0 25px rgba(255,165,0,0.5)",
+                }}
+            >
+                {buttonLabel}
+            </motion.button>
 
-                {/* Dropdown */}
-                <AnimatePresence>
+
+            <AnimatePresence>
                     {showList && !selectedEvent && (
                         <motion.div
                             key="dropdown"
@@ -96,10 +130,9 @@ export default function TicketCentrePage() {
                             ))}
                         </motion.div>
                     )}
-                </AnimatePresence>
-            </div>
+            </AnimatePresence>
 
-            {/* Purchase Ticket */}
+            {/* 🎟 Purchase Ticket Section */}
             {selectedEvent && (
                 <motion.div
                     key={selectedEvent.id}
@@ -107,13 +140,17 @@ export default function TicketCentrePage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.4 }}
-                    className="text-center"
+                    className="text-center mt-12"
                 >
-                    <PurchaseTicket eventName={selectedEvent.title} eventId={selectedEvent.id} price={""} />
+                    <PurchaseTicket
+                        eventName={selectedEvent.title}
+                        eventId={selectedEvent.id}
+                        price={selectedEvent.price || 0}
+                    />
                 </motion.div>
             )}
 
-            {/* Event List */}
+            {/* 📋 Event Details Section */}
             {selectedEvent && (
                 <motion.div
                     key={`list-${selectedEvent.id}`}

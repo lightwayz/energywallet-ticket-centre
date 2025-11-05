@@ -35,3 +35,15 @@ html, body {
 :root {
   color-scheme: dark; /* tell browsers you’re dark mode native */
 }
+
+@keyframes slow-pan {
+  0% { background-position: center top; }
+  50% { background-position: center bottom; }
+  100% { background-position: center top; }
+}
+
+.animate-slow-pan {
+  animation: slow-pan 40s ease-in-out infinite;
+}
+
+
