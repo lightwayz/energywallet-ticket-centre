@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import PurchaseTicket from "@/components/PurchaseTicket";
 import { db } from "@/lib/firebase";
@@ -60,7 +60,7 @@ export default function EventSearch() {
 
     return (
         <div
-            className="relative min-h-screen text-center py-12 overflow-hidden flex flex-col items-center justify-center"
+            className="relative min-h-screen text-center overflow-hidden flex flex-col items-center justify-center"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
         >
@@ -76,7 +76,6 @@ export default function EventSearch() {
                 }}
                 transition={{ type: "spring", stiffness: 60, damping: 20 }}
             />
-
             <motion.div
                 className="absolute inset-0 bg-black/65 z-0"
                 initial={{ opacity: 0.5 }}
@@ -85,7 +84,7 @@ export default function EventSearch() {
             />
 
             {/* Foreground */}
-            <div className="relative z-10 max-w-3xl mx-auto px-4 backdrop-blur-sm">
+            <div className="relative z-10 max-w-3xl mx-auto px-4 backdrop-blur-sm py-16">
                 <motion.h1
                     className="text-3xl md:text-4xl font-bold mb-8 tracking-widest text-energy-orange drop-shadow-lg"
                     initial={{ opacity: 0, y: 20 }}
@@ -109,18 +108,21 @@ export default function EventSearch() {
                     </motion.button>
                 )}
 
-                {/* 🎟 Full-screen modal */}
+                {/* 🎟 Available Events — Same size as background */}
                 <AnimatePresence>
                     {showList && (
                         <motion.div
-                            className="fixed inset-0 bg-black/95 z-50 overflow-y-auto"
+                            className="absolute inset-0 flex flex-col items-center justify-start bg-black/60 backdrop-blur-md z-40 p-10 overflow-y-auto"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
+                            transition={{ duration: 0.6 }}
                         >
-                            {/* Frosted floating header */}
-                            <div className="sticky top-0 z-10 backdrop-blur-xl bg-gray-900/80 border-b border-gray-700 px-8 py-6 flex justify-between items-center">
-                                <h2 className="text-3xl font-semibold text-energy-orange">Available Events</h2>
+                            {/* Frosted header */}
+                            <div className="sticky top-0 z-10 w-full backdrop-blur-md bg-gray-900/70 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+                                <h2 className="text-3xl font-semibold text-energy-orange">
+                                    Available Events
+                                </h2>
                                 <button
                                     onClick={() => setShowList(false)}
                                     className="text-gray-400 hover:text-white text-2xl transition"
@@ -129,8 +131,8 @@ export default function EventSearch() {
                                 </button>
                             </div>
 
-                            {/* Full-screen event grid */}
-                            <div className="p-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                            {/* Grid of events */}
+                            <div className="w-full max-w-7xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
                                 {loading ? (
                                     <p className="text-gray-400 text-center col-span-full">
                                         Loading events...
