@@ -1,7 +1,9 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import PurchaseTicket from "@/components/PurchaseTicket";
@@ -25,6 +27,7 @@ export default function EventsPage() {
         return () => unsub();
     }, []);
 
+    // Smooth scroll to ticket section
     useEffect(() => {
         if (selectedEvent && purchaseRef.current) {
             setTimeout(() => {
@@ -33,7 +36,7 @@ export default function EventsPage() {
         }
     }, [selectedEvent]);
 
-    // 🧠 Shared motion values for subtle 3D hover
+    // Shared 3D motion values
     const x = useMotionValue(0.5);
     const y = useMotionValue(0.5);
     const rotateX = useTransform(y, [0, 1], [8, -8]);
@@ -66,7 +69,7 @@ export default function EventsPage() {
                 className="absolute inset-0 bg-cover bg-center z-0"
                 style={{
                     backgroundImage: "url('/eventback.jpg')",
-                    opacity: 0.4,
+                    opacity: 0.45,
                     rotateX,
                     rotateY,
                     transformPerspective: 1000,
@@ -75,26 +78,40 @@ export default function EventsPage() {
             />
             <motion.div className="absolute inset-0 bg-black/60 z-0" />
 
+            {/* 🏠 Back to Home */}
+            <div className="relative z-10 w-full max-w-6xl flex justify-between items-center px-6 mb-6">
+                <Link
+                    href="/"
+                    className="px-6 py-2 rounded-xl bg-energy-orange text-energy-black font-semibold shadow-md hover:bg-transparent hover:text-energy-orange border border-energy-orange transition-all duration-300"
+                >
+                    ← Back to Home
+                </Link>
+            </div>
+
             {/* Header */}
             <h1 className="text-3xl md:text-4xl font-bold text-energy-orange mb-10 text-center relative z-10 drop-shadow-lg">
                 Available Events
             </h1>
 
-            {/* Event Grid */}
+            {/* 🧾 Event Grid */}
             <div className="relative z-10 grid gap-8 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6">
                 {events.map((event) => {
                     const isSelected = selectedEvent?.id === event.id;
                     return (
                         <motion.div
                             key={event.id}
-                            whileHover={{ scale: 1.05, rotateY: 2 }}
+                            whileHover={{ scale: 1.05, rotateY: 3 }}
                             transition={{ duration: 0.3 }}
                             onClick={() => setSelectedEvent(event)}
                             className={`cursor-pointer bg-gray-900/70 backdrop-blur-md p-5 rounded-2xl border
-                ${isSelected ? "border-energy-orange shadow-[0_0_25px_4px_rgba(255,165,0,0.5)]" : "border-gray-700"}
+                ${
+                                isSelected
+                                    ? "border-energy-orange shadow-[0_0_25px_4px_rgba(255,165,0,0.5)]"
+                                    : "border-gray-700"
+                            }
                 shadow-lg hover:shadow-energy-orange/40 transition-all transform-gpu perspective-1000`}
                         >
-                            {/* 🖼 Event Banner */}
+                            {/* 🖼 Banner */}
                             <motion.div
                                 className="relative w-full h-48 rounded-xl overflow-hidden mb-3"
                                 style={{ rotateX, rotateY, transformPerspective: 1000 }}
