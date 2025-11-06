@@ -2,131 +2,128 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
-import PurchaseTicket from "@/components/PurchaseTicket";
-import { getEvents } from "@/lib/api/events";
-
-const ThreeScene = dynamic(() => import("@/components/ThreeScene"), { ssr: false });
-
-type Event = {
-    id: string;
-    title: string;
-    location: string;
-    date: string;
-    description: string;
-    price: number | string;
-};
+import { useEffect, useState } from "react";
+import { motion, useAnimation } from "framer-motion";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function EventsPage() {
-    const [events, setEvents] = useState<Event[]>([]);
-    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-    const [showPurchase, setShowPurchase] = useState(false);
-    const [showBackground, setShowBackground] = useState(false);
+    const [events, setEvents] = useState<
+        {
+            id: string;
+            name: string;
+            description?: string;
+            location?: string;
+            price?: number;
+            bannerUrl?: string;
+            date?: any;
+        }[]
+    >([]);
+    const [loading, setLoading] = useState(true);
+    const controls = useAnimation();
 
-    // 🔥 Load events
     useEffect(() => {
-        async function fetchEvents() {
-            try {
-                const rawData = await getEvents();
-                const parsed = rawData.map((e: any) => ({
-                    ...e,
-                    price: Number(String(e.price).replace(/[^0-9.]/g, "")) || 0,
-                }));
-                setEvents(parsed);
-            } catch (err) {
-                console.error("Failed to load events", err);
-            }
-        }
+        const q = query(collection(db, "events"), orderBy("date", "asc"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetched = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                name: doc.data().title || "Untitled Event",
+                description: doc.data().description || "No description provided",
+                location: doc.data().location || "Unknown",
+                price: Number(String(doc.data().price || "0").replace(/[^0-9.]/g, "")),
+                bannerUrl: doc.data().bannerUrl || "/placeholder-banner.jpg",
+                date: doc.data().date,
+            }));
+            setEvents(fetched);
+            setLoading(false);
+        });
 
-        fetchEvents();
+        return () => unsubscribe();
     }, []);
 
-    // 🎬 Handle event selection
-    const handleSelectEvent = (event: Event) => {
-        setSelectedEvent(event);
-        setShowPurchase(true);
-        setShowBackground(true);
-
-        setTimeout(() => {
-            document.getElementById("purchase-ticket")?.scrollIntoView({ behavior: "smooth" });
-        }, 300);
-    };
+    // 🎞️ Background Ken Burns slow pan effect
+    useEffect(() => {
+        controls.start({
+            scale: [1, 1.1],
+            x: [0, -20],
+            y: [0, -10],
+            transition: { duration: 40, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" },
+        });
+    }, [controls]);
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="relative min-h-screen bg-energy-black text-white flex flex-col items-center justify-center px-4 py-10 overflow-hidden"
-        >
-            {/* 🌌 Dynamic transparent event background */}
-            <AnimatePresence>
-                {showBackground && (
-                    <motion.div
-                        key="event-bg"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.25 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                        className="absolute inset-0 z-0 bg-cover bg-center animate-slow-pan"
-                        style={{
-                            backgroundImage: "url('/eventback.jpg')",
-                            mixBlendMode: "overlay",
-                        }}
-                    />
-                )}
-            </AnimatePresence>
+        <div className="relative min-h-screen text-white overflow-hidden">
+            {/* 🌌 Cinematic Background */}
+            <motion.div
+                className="absolute inset-0 bg-cover bg-center"
+                animate={controls}
+                style={{ backgroundImage: "url('/eventback.jpg')", opacity: 0.25 }}
+            />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-0" />
 
-            {/* ✨ 3D Ambient Scene */}
-            <div className="relative z-10 w-full max-w-5xl mb-10">
-                <ThreeScene />
+            {/* Header */}
+            <div className="relative z-10 px-6 py-6 flex justify-between items-center border-b border-gray-800 backdrop-blur-md bg-black/30 stic-ky top-0">
+                <h1 className="text-3xl font-bold text-energy-orange drop-shadow-md">
+                    Available Events
+                </h1>
+                <Link
+                    href="/"
+                    className="text-sm px-5 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl transition"
+                >
+                    ← Back to Home
+                </Link>
             </div>
 
-            {/* 🔠 Title */}
-            <h1 className="relative z-10 text-3xl font-bold text-energy-orange mb-10 text-center drop-shadow-lg">
-                Energywallet Tickets
-            </h1>
+            {/* Events Grid */}
+            <div className="relative z-10 p-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {loading ? (
+                    <p className="text-gray-400 text-center col-span-full">Loading events...</p>
+                ) : events.length === 0 ? (
+                    <p className="text-gray-400 text-center col-span-full">No events available.</p>
+                ) : (
+                    events.map((event) => (
+                        <motion.div
+                            key={event.id}
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                            className="relative group cursor-pointer bg-white/5 rounded-2xl shadow-lg overflow-hidden border border-gray-700 hover:border-energy-orange/60 hover:shadow-energy-orange/20 backdrop-blur-sm"
+                        >
+                            {/* 🖼️ Banner */}
+                            <div className="relative w-full h-48 overflow-hidden">
+                                <Image
+                                    src={event.bannerUrl || "/placeholder-banner.jpg"}
+                                    alt={event.name}
+                                    fill
+                                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                            </div>
 
-            {/* 🧾 Event list */}
-            <div className="relative z-10 grid gap-4 w-full max-w-3xl mb-10">
-                {events.map((event) => (
-                    <motion.div
-                        key={event.id}
-                        whileHover={{ scale: 1.03 }}
-                        onClick={() => handleSelectEvent(event)}
-                        className="bg-gray-800 p-6 rounded-xl shadow-lg cursor-pointer hover:bg-gray-700 transition"
-                    >
-                        <h2 className="text-xl font-semibold text-energy-orange">{event.title}</h2>
-                        <p className="text-gray-400 text-sm mb-1">📍 {event.location}</p>
-                        <p className="text-gray-400 text-sm mb-1">
-                            🗓️ {new Date(event.date).toLocaleDateString()}
-                        </p>
-                        <p className="text-gray-400 text-sm">💰 ₦{event.price}</p>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* 🎟️ Purchase section */}
-            <AnimatePresence>
-                {showPurchase && selectedEvent && (
-                    <motion.div
-                        id="purchase-ticket"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.7, ease: "easeOut" }}
-                        className="relative z-10 w-full max-w-md"
-                    >
-                        <PurchaseTicket
-                            eventName={selectedEvent.title}
-                            eventId={selectedEvent.id}
-                            price={selectedEvent.price}
-                        />
-                    </motion.div>
+                            {/* 🎟️ Event Info */}
+                            <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-black/40 backdrop-blur-md text-left">
+                                <h3 className="text-lg font-semibold text-energy-orange truncate">{event.name}</h3>
+                                <p className="text-gray-300 text-sm truncate">{event.description}</p>
+                                <div className="flex justify-between text-xs text-gray-400 mt-2">
+                                    <span>📍 {event.location}</span>
+                                    {event.date && (
+                                        <span>
+                      🗓️ {new Date(event.date.seconds * 1000).toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                        })}
+                    </span>
+                                    )}
+                                </div>
+                                <p className="text-sm text-white mt-2">
+                                    💰 <strong>₦{event.price?.toLocaleString()}</strong>
+                                </p>
+                            </div>
+                        </motion.div>
+                    ))
                 )}
-            </AnimatePresence>
-        </motion.div>
+            </div>
+        </div>
     );
 }

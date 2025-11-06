@@ -1,41 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import PurchaseTicket from "@/components/PurchaseTicket";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import Link from "next/link";
+import React, { useState, useEffect } from "react";
 
-export default function EventSearch() {
-    const [showList, setShowList] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-    const [events, setEvents] = useState<
-        { id: string; name: string; description?: string; location?: string; price?: number }[]
-    >([]);
-    const [loading, setLoading] = useState(true);
+// ✨ Helper to generate particles dynamically
+function EnergyParticles() {
+    const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
 
     useEffect(() => {
-        const q = query(collection(db, "events"), orderBy("date", "asc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetched = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                name: doc.data().title || "Untitled Event",
-                description: doc.data().description || "No description provided",
-                location: doc.data().location || "Unknown",
-                price: Number(String(doc.data().price || "0").replace(/[^0-9.]/g, "")),
-                date: doc.data().date,
-            }));
-            setEvents(fetched);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        // Generate random positions
+        const p = Array.from({ length: 25 }, (_, i) => ({
+            id: i,
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+        }));
+        setParticles(p);
     }, []);
 
-    const handleEventSelect = (eventName: string) => {
-        setSelectedEvent(eventName);
-        setShowList(false);
-    };
+    return (
+        <div className="absolute inset-0 overflow-hidden z-[1]">
+            {particles.map((p) => (
+                <motion.div
+                    key={p.id}
+                    className="absolute w-1.5 h-1.5 rounded-full bg-energy-orange/70 shadow-[0_0_6px_2px_rgba(255,165,0,0.6)]"
+                    style={{
+                        top: `${p.y}%`,
+                        left: `${p.x}%`,
+                    }}
+                    animate={{
+                        y: ["0%", "3%", "-2%", "0%"],
+                        x: ["0%", "2%", "-1%", "0%"],
+                        opacity: [0.8, 1, 0.6, 0.8],
+                    }}
+                    transition={{
+                        duration: 6 + Math.random() * 4,
+                        repeat: Infinity,
+                        repeatType: "mirror",
+                        ease: "easeInOut",
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
+export default function EventSearch() {
+    const [loading] = useState(false);
 
     // 🌀 3D parallax background
     const x = useMotionValue(0.5);
@@ -60,31 +71,36 @@ export default function EventSearch() {
 
     return (
         <div
-            className="relative min-h-screen text-center overflow-hidden flex flex-col items-center justify-center"
+            className="relative min-h-[85vh] text-center overflow-hidden flex flex-col items-center justify-center"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
         >
-            {/* 🌌 Background */}
+            {/* 🌌 Animated 3D background */}
             <motion.div
                 className="absolute inset-0 bg-cover bg-center z-0"
                 style={{
                     backgroundImage: "url('/eventback.jpg')",
-                    opacity: 0.25,
                     rotateX,
                     rotateY,
                     transformPerspective: 1000,
+                    opacity: 0.35, // 🔥 slightly stronger visibility
                 }}
                 transition={{ type: "spring", stiffness: 60, damping: 20 }}
             />
+
+            {/* ✨ Floating AI Particles */}
+            <EnergyParticles />
+
+            {/* Overlay */}
             <motion.div
-                className="absolute inset-0 bg-black/65 z-0"
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: 0.65 }}
+                className="absolute inset-0 bg-black/45 z-[2]"
+                initial={{ opacity: 0.4 }}
+                animate={{ opacity: 0.45 }}
                 transition={{ duration: 1.2 }}
             />
 
             {/* Foreground */}
-            <div className="relative z-10 max-w-3xl mx-auto px-4 backdrop-blur-sm py-16">
+            <div className="relative z-10 max-w-3xl mx-auto px-4 backdrop-blur-sm">
                 <motion.h1
                     className="text-3xl md:text-4xl font-bold mb-8 tracking-widest text-energy-orange drop-shadow-lg"
                     initial={{ opacity: 0, y: 20 }}
@@ -94,102 +110,16 @@ export default function EventSearch() {
                     UPCOMING&nbsp;EVENTS
                 </motion.h1>
 
-                {!selectedEvent && (
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => !loading && setShowList(true)}
-                        disabled={loading}
-                        className={`px-8 py-4 text-lg bg-energy-orange text-energy-black rounded-2xl font-semibold shadow-lg ${
-                            loading ? "opacity-60 cursor-not-allowed" : "hover:bg-orange-400"
-                        }`}
-                    >
-                        {buttonLabel}
-                    </motion.button>
-                )}
+                <p className="text-gray-300 mb-8">
+                    Discover electrifying experiences near you — powered by EnergyWallet.
+                </p>
 
-                {/* 🎟 Available Events — Same size as background */}
-                <AnimatePresence>
-                    {showList && (
-                        <motion.div
-                            className="absolute inset-0 flex flex-col items-center justify-start bg-black/60 backdrop-blur-md z-40 p-10 overflow-y-auto"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.6 }}
-                        >
-                            {/* Frosted header */}
-                            <div className="sticky top-0 z-10 w-full backdrop-blur-md bg-gray-900/70 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
-                                <h2 className="text-3xl font-semibold text-energy-orange">
-                                    Available Events
-                                </h2>
-                                <button
-                                    onClick={() => setShowList(false)}
-                                    className="text-gray-400 hover:text-white text-2xl transition"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            {/* Grid of events */}
-                            <div className="w-full max-w-7xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
-                                {loading ? (
-                                    <p className="text-gray-400 text-center col-span-full">
-                                        Loading events...
-                                    </p>
-                                ) : events.length === 0 ? (
-                                    <p className="text-gray-400 text-center col-span-full">
-                                        No events available.
-                                    </p>
-                                ) : (
-                                    events.map((event) => (
-                                        <div
-                                            key={event.id}
-                                            onClick={() => handleEventSelect(event.name)}
-                                            className="cursor-pointer bg-white/10 hover:bg-white/20 p-6 rounded-2xl shadow-lg transition border border-gray-700 h-full flex flex-col justify-between"
-                                        >
-                                            <div>
-                                                <h3 className="text-2xl font-semibold text-energy-orange mb-3">
-                                                    {event.name}
-                                                </h3>
-                                                <p className="text-gray-300 mb-3 text-sm line-clamp-3">
-                                                    {event.description}
-                                                </p>
-                                                <p className="text-gray-400 text-xs">📍 {event.location}</p>
-                                            </div>
-                                            <div className="mt-4 text-gray-300 text-sm">
-                                                💰 <strong>₦{event.price}</strong>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* 🧾 Purchase Ticket */}
-                <AnimatePresence>
-                    {selectedEvent && (
-                        <motion.div
-                            key={selectedEvent}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.4 }}
-                            className="mt-12"
-                        >
-                            <h2 className="text-2xl font-semibold mb-6 text-energy-orange drop-shadow-md">
-                                {selectedEvent}
-                            </h2>
-                            <PurchaseTicket
-                                eventName={selectedEvent}
-                                eventId={selectedEvent.replace(/\s/g, "-").toLowerCase()}
-                                price={1000}
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <Link
+                    href="/events"
+                    className="px-8 py-4 text-lg bg-energy-orange text-energy-black rounded-2xl font-semibold shadow-lg hover:bg-orange-400 transition"
+                >
+                    {buttonLabel}
+                </Link>
             </div>
         </div>
     );
