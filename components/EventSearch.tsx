@@ -4,18 +4,17 @@ import { motion, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 
-// ✨ Helper to generate particles dynamically
+// ✨ Floating energy particles
 function EnergyParticles() {
     const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
-
     useEffect(() => {
-        // Generate random positions
-        const p = Array.from({ length: 25 }, (_, i) => ({
-            id: i,
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-        }));
-        setParticles(p);
+        setParticles(
+            Array.from({ length: 25 }, (_, i) => ({
+                id: i,
+                x: Math.random() * 100,
+                y: Math.random() * 100,
+            }))
+        );
     }, []);
 
     return (
@@ -75,7 +74,7 @@ export default function EventSearch() {
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
         >
-            {/* 🌌 Animated 3D background */}
+            {/* 🌌 3D Background */}
             <motion.div
                 className="absolute inset-0 bg-cover bg-center z-0"
                 style={{
@@ -83,15 +82,15 @@ export default function EventSearch() {
                     rotateX,
                     rotateY,
                     transformPerspective: 1000,
-                    opacity: 0.35, // 🔥 slightly stronger visibility
+                    opacity: 0.35,
                 }}
                 transition={{ type: "spring", stiffness: 60, damping: 20 }}
             />
 
-            {/* ✨ Floating AI Particles */}
+            {/* ✨ Energy Particles */}
             <EnergyParticles />
 
-            {/* Overlay */}
+            {/* Dark Overlay */}
             <motion.div
                 className="absolute inset-0 bg-black/45 z-[2]"
                 initial={{ opacity: 0.4 }}
@@ -99,7 +98,7 @@ export default function EventSearch() {
                 transition={{ duration: 1.2 }}
             />
 
-            {/* Foreground */}
+            {/* Foreground Content */}
             <div className="relative z-10 max-w-3xl mx-auto px-4 backdrop-blur-sm">
                 <motion.h1
                     className="text-3xl md:text-4xl font-bold mb-8 tracking-widest text-energy-orange drop-shadow-lg"
@@ -114,12 +113,37 @@ export default function EventSearch() {
                     Discover electrifying experiences near you — powered by EnergyWallet.
                 </p>
 
-                <Link
-                    href="/events"
-                    className="px-8 py-4 text-lg bg-energy-orange text-energy-black rounded-2xl font-semibold shadow-lg hover:bg-orange-400 transition"
-                >
-                    {buttonLabel}
+                {/* View Events Button */}
+                <Link href="/events" className="group relative inline-block">
+                    <motion.button
+                        className="relative px-10 py-4 text-lg rounded-2xl font-semibold border-2 border-energy-orange
+               bg-energy-orange text-energy-black shadow-lg transition-all duration-500 overflow-hidden"
+                        whileHover={{ scale: 1.05 }}
+                    >
+                        {/* Orange base stays solid */}
+                        <span className="relative z-20">{buttonLabel}</span>
+
+                        {/* Hover transparent overlay */}
+                        <span
+                            className="absolute inset-0 bg-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            style={{
+                                background: "rgba(255, 165, 0, 0.15)", // orange-tinted transparency instead of dark
+                                backdropFilter: "blur(2px)",
+                            }}
+                        />
+
+                        {/* Shimmer sweep */}
+                        <motion.span
+                            className="absolute top-0 left-[-70%] w-[40%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent
+                 rounded-2xl opacity-0 group-hover:opacity-80"
+                            whileHover={{ left: "120%" }}
+                            transition={{ duration: 1.2, ease: "easeInOut" }}
+                        />
+                    </motion.button>
                 </Link>
+
+
+
             </div>
         </div>
     );

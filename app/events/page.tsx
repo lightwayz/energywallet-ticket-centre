@@ -1,129 +1,139 @@
-// noinspection JSIgnoredPromiseFromCall
-
 "use client";
-
-import { useEffect, useState } from "react";
-import { motion, useAnimation } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import Image from "next/image";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import Link from "next/link";
-import Image from "next/image";
+import PurchaseTicket from "@/components/PurchaseTicket";
 
 export default function EventsPage() {
-    const [events, setEvents] = useState<
-        {
-            id: string;
-            name: string;
-            description?: string;
-            location?: string;
-            price?: number;
-            bannerUrl?: string;
-            date?: any;
-        }[]
-    >([]);
-    const [loading, setLoading] = useState(true);
-    const controls = useAnimation();
+    const [events, setEvents] = useState<any[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+    const purchaseRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         const q = query(collection(db, "events"), orderBy("date", "asc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetched = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                name: doc.data().title || "Untitled Event",
-                description: doc.data().description || "No description provided",
-                location: doc.data().location || "Unknown",
-                price: Number(String(doc.data().price || "0").replace(/[^0-9.]/g, "")),
-                bannerUrl: doc.data().bannerUrl || "/placeholder-banner.jpg",
-                date: doc.data().date,
-            }));
-            setEvents(fetched);
-            setLoading(false);
+        const unsub = onSnapshot(q, (snapshot) => {
+            setEvents(
+                snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    price: Number(String(doc.data().price || "0").replace(/[^0-9.]/g, "")),
+                }))
+            );
         });
-
-        return () => unsubscribe();
+        return () => unsub();
     }, []);
 
-    // 🎞️ Background Ken Burns slow pan effect
     useEffect(() => {
-        controls.start({
-            scale: [1, 1.1],
-            x: [0, -20],
-            y: [0, -10],
-            transition: { duration: 40, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" },
-        });
-    }, [controls]);
+        if (selectedEvent && purchaseRef.current) {
+            setTimeout(() => {
+                purchaseRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 300);
+        }
+    }, [selectedEvent]);
+
+    // 🧠 Shared motion values for subtle 3D hover
+    const x = useMotionValue(0.5);
+    const y = useMotionValue(0.5);
+    const rotateX = useTransform(y, [0, 1], [8, -8]);
+    const rotateY = useTransform(x, [0, 1], [-8, 8]);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const px = (e.clientX - left) / width;
+        const py = (e.clientY - top) / height;
+        x.set(px);
+        y.set(py);
+    };
+
+    const handleMouseLeave = () => {
+        x.set(0.5);
+        y.set(0.5);
+    };
 
     return (
-        <div className="relative min-h-screen text-white overflow-hidden">
-            {/* 🌌 Cinematic Background */}
+        <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="relative min-h-screen bg-energy-black text-white overflow-hidden flex flex-col items-center justify-start py-10"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+        >
+            {/* 🌌 Background */}
             <motion.div
-                className="absolute inset-0 bg-cover bg-center"
-                animate={controls}
-                style={{ backgroundImage: "url('/eventback.jpg')", opacity: 0.25 }}
+                className="absolute inset-0 bg-cover bg-center z-0"
+                style={{
+                    backgroundImage: "url('/eventback.jpg')",
+                    opacity: 0.4,
+                    rotateX,
+                    rotateY,
+                    transformPerspective: 1000,
+                }}
+                transition={{ type: "spring", stiffness: 60, damping: 20 }}
             />
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-0" />
+            <motion.div className="absolute inset-0 bg-black/60 z-0" />
 
             {/* Header */}
-            <div className="relative z-10 px-6 py-6 flex justify-between items-center border-b border-gray-800 backdrop-blur-md bg-black/30 stic-ky top-0">
-                <h1 className="text-3xl font-bold text-energy-orange drop-shadow-md">
-                    Available Events
-                </h1>
-                <Link
-                    href="/"
-                    className="text-sm px-5 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl transition"
-                >
-                    ← Back to Home
-                </Link>
-            </div>
+            <h1 className="text-3xl md:text-4xl font-bold text-energy-orange mb-10 text-center relative z-10 drop-shadow-lg">
+                Available Events
+            </h1>
 
-            {/* Events Grid */}
-            <div className="relative z-10 p-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {loading ? (
-                    <p className="text-gray-400 text-center col-span-full">Loading events...</p>
-                ) : events.length === 0 ? (
-                    <p className="text-gray-400 text-center col-span-full">No events available.</p>
-                ) : (
-                    events.map((event) => (
+            {/* Event Grid */}
+            <div className="relative z-10 grid gap-8 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6">
+                {events.map((event) => {
+                    const isSelected = selectedEvent?.id === event.id;
+                    return (
                         <motion.div
                             key={event.id}
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                            className="relative group cursor-pointer bg-white/5 rounded-2xl shadow-lg overflow-hidden border border-gray-700 hover:border-energy-orange/60 hover:shadow-energy-orange/20 backdrop-blur-sm"
+                            whileHover={{ scale: 1.05, rotateY: 2 }}
+                            transition={{ duration: 0.3 }}
+                            onClick={() => setSelectedEvent(event)}
+                            className={`cursor-pointer bg-gray-900/70 backdrop-blur-md p-5 rounded-2xl border
+                ${isSelected ? "border-energy-orange shadow-[0_0_25px_4px_rgba(255,165,0,0.5)]" : "border-gray-700"}
+                shadow-lg hover:shadow-energy-orange/40 transition-all transform-gpu perspective-1000`}
                         >
-                            {/* 🖼️ Banner */}
-                            <div className="relative w-full h-48 overflow-hidden">
+                            {/* 🖼 Event Banner */}
+                            <motion.div
+                                className="relative w-full h-48 rounded-xl overflow-hidden mb-3"
+                                style={{ rotateX, rotateY, transformPerspective: 1000 }}
+                            >
                                 <Image
                                     src={event.bannerUrl || "/placeholder-banner.jpg"}
-                                    alt={event.name}
+                                    alt={event.title}
                                     fill
-                                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                    className="object-cover transition-transform duration-700 ease-out hover:scale-110"
+                                    sizes="(max-width: 768px) 100vw, 33vw"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                            </div>
+                            </motion.div>
 
-                            {/* 🎟️ Event Info */}
-                            <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-black/40 backdrop-blur-md text-left">
-                                <h3 className="text-lg font-semibold text-energy-orange truncate">{event.name}</h3>
-                                <p className="text-gray-300 text-sm truncate">{event.description}</p>
-                                <div className="flex justify-between text-xs text-gray-400 mt-2">
-                                    <span>📍 {event.location}</span>
-                                    {event.date && (
-                                        <span>
-                      🗓️ {new Date(event.date.seconds * 1000).toLocaleDateString("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                        })}
-                    </span>
-                                    )}
-                                </div>
-                                <p className="text-sm text-white mt-2">
-                                    💰 <strong>₦{event.price?.toLocaleString()}</strong>
-                                </p>
-                            </div>
+                            <h2 className="text-xl font-semibold text-energy-orange">{event.title}</h2>
+                            <p className="text-gray-400 text-sm">📍 {event.location}</p>
+                            <p className="text-gray-400 text-sm">🗓️ {new Date(event.date).toLocaleDateString()}</p>
+                            <p className="text-gray-400 text-sm">💰 ₦{event.price}</p>
                         </motion.div>
-                    ))
-                )}
+                    );
+                })}
             </div>
-        </div>
+
+            {/* 🎟 Purchase Section */}
+            {selectedEvent && (
+                <motion.div
+                    ref={purchaseRef}
+                    id="purchase-ticket"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="relative z-20 mt-16"
+                >
+                    <PurchaseTicket
+                        eventId={selectedEvent.id}
+                        eventName={selectedEvent.title}
+                        price={selectedEvent.price}
+                    />
+                </motion.div>
+            )}
+        </motion.div>
     );
 }

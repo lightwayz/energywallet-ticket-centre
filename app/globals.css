@@ -46,4 +46,12 @@ html, body {
   animation: slow-pan 40s ease-in-out infinite;
 }
 
+@keyframes shimmerMove {
+  0% { left: -75%; }
+  100% { left: 125%; }
+}
+
+.group:hover .bg-gradient-to-r {
+  animation: shimmerMove 1.5s ease-in-out forwards;
+}
 
