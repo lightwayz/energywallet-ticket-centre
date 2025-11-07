@@ -1,12 +1,13 @@
 "use client";
 
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 
 // ✨ Floating energy particles
 function EnergyParticles() {
     const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
+
     useEffect(() => {
         setParticles(
             Array.from({ length: 25 }, (_, i) => ({
@@ -46,45 +47,20 @@ function EnergyParticles() {
 
 export default function EventSearch() {
     const [loading] = useState(false);
-
-    // 🌀 3D parallax background
-    const x = useMotionValue(0.5);
-    const y = useMotionValue(0.5);
-    const rotateX = useTransform(y, [0, 1], [10, -10]);
-    const rotateY = useTransform(x, [0, 1], [-10, 10]);
-
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-        const px = (e.clientX - left) / width;
-        const py = (e.clientY - top) / height;
-        x.set(px);
-        y.set(py);
-    };
-
-    const handleMouseLeave = () => {
-        x.set(0.5);
-        y.set(0.5);
-    };
-
     const buttonLabel = loading ? "Loading Events..." : "View Events";
 
     return (
-        <div
-            className="relative min-h-[85vh] text-center overflow-hidden flex flex-col items-center justify-center"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-        >
-            {/* 🌌 3D Background */}
-            <motion.div
+        <div className="relative min-h-screen text-center overflow-hidden flex flex-col items-center justify-center">
+            {/* 🌌 Fullscreen Static Background */}
+            <div
                 className="absolute inset-0 bg-cover bg-center z-0"
                 style={{
                     backgroundImage: "url('/eventback.jpg')",
-                    rotateX,
-                    rotateY,
-                    transformPerspective: 1000,
-                    opacity: 0.35,
+                    backgroundAttachment: "fixed", // keeps image static
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "cover",
+                    opacity: 0.4, // subtle visibility
                 }}
-                transition={{ type: "spring", stiffness: 60, damping: 20 }}
             />
 
             {/* ✨ Energy Particles */}
@@ -120,19 +96,18 @@ export default function EventSearch() {
                bg-energy-orange text-energy-black shadow-lg transition-all duration-500 overflow-hidden"
                         whileHover={{ scale: 1.05 }}
                     >
-                        {/* Orange base stays solid */}
                         <span className="relative z-20">{buttonLabel}</span>
 
-                        {/* Hover transparent overlay */}
+                        {/* Hover Transparent Overlay */}
                         <span
                             className="absolute inset-0 bg-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                             style={{
-                                background: "rgba(255, 165, 0, 0.15)", // orange-tinted transparency instead of dark
+                                background: "rgba(255, 165, 0, 0.15)",
                                 backdropFilter: "blur(2px)",
                             }}
                         />
 
-                        {/* Shimmer sweep */}
+                        {/* Shimmer Sweep */}
                         <motion.span
                             className="absolute top-0 left-[-70%] w-[40%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent
                  rounded-2xl opacity-0 group-hover:opacity-80"
@@ -141,9 +116,6 @@ export default function EventSearch() {
                         />
                     </motion.button>
                 </Link>
-
-
-
             </div>
         </div>
     );
