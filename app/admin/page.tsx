@@ -1,4 +1,4 @@
-// noinspection JSIgnoredPromiseFromCall,JSUnusedLocalSymbols
+// noinspection JSIgnoredPromiseFromCall,JSUnusedLocalSymbols,TypeScriptExplicitMemberType
 
 "use client";
 
@@ -72,8 +72,6 @@ export default function AdminPage() {
         router.push("/admin/login");
     };
 
-    // // 🔹 Go to Admin Work page
-    // const goToAdminWork = () => router.push("/admin/work");
 
     // 🔹 Open Edit Modal
     const openEditModal = (event: any) => {

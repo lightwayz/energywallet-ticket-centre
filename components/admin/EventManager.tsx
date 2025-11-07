@@ -12,17 +12,27 @@ import {
     Timestamp,
     updateDoc,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase"; // ❗ keep only Firestore + Auth
+import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import imageCompression from "browser-image-compression";
 import AdminGuard from "@/components/AdminGuard";
 
+// ✅ Props type to match admin/page.tsx usage
+type EventManagerProps = {
+    events?: any[];
+    onEdit?: (event: any) => void;
+    onDelete?: (id: string) => Promise<void>;
+};
 
-export default function AdminPage() {
+export default function EventManager({
+                                         events: externalEvents,
+                                         onEdit,
+                                         onDelete,
+                                     }: EventManagerProps) {
     const router = useRouter();
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<any[]>(externalEvents || []);
     const [loading, setLoading] = useState(true);
     const [editMode, setEditMode] = useState(false);
     const [currentEvent, setCurrentEvent] = useState<any>(null);
@@ -38,10 +48,14 @@ export default function AdminPage() {
         bannerUrl: "",
     });
 
-    // 🔹 Fetch all events
+    // 🔹 Fetch all events (only if not passed in as props)
     useEffect(() => {
-        fetchEvents();
-    }, []);
+        if (!externalEvents || externalEvents.length === 0) fetchEvents();
+        else {
+            setEvents(externalEvents);
+            setLoading(false);
+        }
+    }, [externalEvents]);
 
     const fetchEvents = async () => {
         setLoading(true);
@@ -56,7 +70,7 @@ export default function AdminPage() {
         router.push("/admin/login");
     };
 
-    // ✅ Banner Upload (Vercel Blob only)
+    // ✅ Banner Upload (Vercel Blob)
     const handleBannerUpload = async (file: File) => {
         setUploading(true);
         try {
@@ -72,13 +86,12 @@ export default function AdminPage() {
             const res = await fetch("/api/blob/upload", {
                 method: "POST",
                 headers: {
-                    Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`, // ✅ admin auth
+                    Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
                 },
                 body: formData,
             });
 
             const data = await res.json();
-
             if (!data.url) throw new Error(data.error || "Upload failed");
 
             setFormData((prev) => ({ ...prev, bannerUrl: data.url }));
@@ -93,8 +106,6 @@ export default function AdminPage() {
             setUploading(false);
         }
     };
-
-
 
     // ✅ Save / Update Event
     const handleSave = async (e: React.FormEvent) => {
@@ -176,16 +187,16 @@ export default function AdminPage() {
         await fetchEvents();
     };
 
+    // Fallbacks for external handlers
+    const editHandler = onEdit || handleEdit;
+    const deleteHandler = onDelete || handleDelete;
+
     return (
         <AdminGuard>
             <div className="min-h-screen bg-gray-900 text-white p-6">
                 {/* Nav */}
                 <nav className="flex justify-between items-center mb-8 border-b border-gray-700 pb-3">
-                    <div className="flex gap-4 text-sm">
-                        {/*<a href="/" className="text-gray-300 hover:text-white">Home</a>*/}
-                        {/*<a href="/admin/work" className="text-gray-300 hover:text-white">Events log</a>*/}
-                        {/*<a href="/admin" className="text-gray-300 hover:text-white font-semibold">Admin</a>*/}
-                    </div>
+                    <div className="flex gap-4 text-sm"></div>
                     <button
                         onClick={handleLogout}
                         className="px-4 py-1 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-semibold"
@@ -206,27 +217,35 @@ export default function AdminPage() {
                             placeholder="Event Title"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            onChange={(e) =>
+                                setFormData({ ...formData, title: e.target.value })
+                            }
                         />
                         <input
                             type="text"
                             placeholder="Location"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.location}
-                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                            onChange={(e) =>
+                                setFormData({ ...formData, location: e.target.value })
+                            }
                         />
                         <input
                             type="datetime-local"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.date}
-                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                            onChange={(e) =>
+                                setFormData({ ...formData, date: e.target.value })
+                            }
                         />
                         <input
                             type="number"
                             placeholder="Price (₦)"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            onChange={(e) =>
+                                setFormData({ ...formData, price: e.target.value })
+                            }
                         />
                     </div>
 
@@ -270,22 +289,32 @@ export default function AdminPage() {
                         placeholder="Event Description"
                         className="w-full mt-4 p-2 rounded bg-gray-700 text-white"
                         value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        onChange={(e) =>
+                            setFormData({ ...formData, description: e.target.value })
+                        }
                     />
 
                     <button
                         type="submit"
                         disabled={uploading}
                         className={`mt-4 px-4 py-2 rounded-lg font-semibold ${
-                            uploading ? "bg-gray-500 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"
+                            uploading
+                                ? "bg-gray-500 cursor-not-allowed"
+                                : "bg-emerald-500 hover:bg-emerald-600"
                         }`}
                     >
-                        {uploading ? "Saving..." : editMode ? "Update Event" : "Add Event"}
+                        {uploading
+                            ? "Saving..."
+                            : editMode
+                                ? "Update Event"
+                                : "Add Event"}
                     </button>
                 </form>
 
                 {/* Event List */}
-                <h2 className="text-2xl font-semibold mb-4 text-energy-orange">All Events</h2>
+                <h2 className="text-2xl font-semibold mb-4 text-energy-orange">
+                    All Events
+                </h2>
                 {loading ? (
                     <p className="text-gray-400">Loading events...</p>
                 ) : (
@@ -310,16 +339,18 @@ export default function AdminPage() {
                                         ? event.date.toDate().toLocaleString()
                                         : event.date}
                                 </p>
-                                <p className="text-energy-orange font-semibold mt-2">₦{event.price}</p>
+                                <p className="text-energy-orange font-semibold mt-2">
+                                    ₦{event.price}
+                                </p>
                                 <div className="flex justify-end gap-2 mt-4">
                                     <button
-                                        onClick={() => handleEdit(event)}
+                                        onClick={() => editHandler(event)}
                                         className="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded text-sm"
                                     >
                                         Edit
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(event.id)}
+                                        onClick={() => deleteHandler(event.id)}
                                         className="px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-sm"
                                     >
                                         Delete
