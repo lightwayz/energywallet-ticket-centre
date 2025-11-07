@@ -36,7 +36,7 @@ export default function EventsPage() {
         return () => window.removeEventListener("keydown", onKey);
     }, [showModal]);
 
-    // Smooth scroll when confirming purchase area (kept for consistency)
+    // Smooth scroll when confirming the purchase area (kept for consistency)
     useEffect(() => {
         if (selectedEvent && purchaseRef.current) {
             setTimeout(() => {

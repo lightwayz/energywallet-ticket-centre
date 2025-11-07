@@ -1,4 +1,4 @@
-// noinspection JSIgnoredPromiseFromCall
+// noinspection JSIgnoredPromiseFromCall,JSUnusedLocalSymbols
 
 "use client";
 
@@ -72,8 +72,8 @@ export default function AdminPage() {
         router.push("/admin/login");
     };
 
-    // 🔹 Go to Admin Work page
-    const goToAdminWork = () => router.push("/admin/work");
+    // // 🔹 Go to Admin Work page
+    // const goToAdminWork = () => router.push("/admin/work");
 
     // 🔹 Open Edit Modal
     const openEditModal = (event: any) => {
@@ -162,18 +162,18 @@ export default function AdminPage() {
                 {/* 🔹 Top Nav */}
                 <nav className="flex justify-between mb-6 border-b border-gray-700 pb-3">
                     <div className="flex gap-4 text-sm">
-                        <a href="/" className="text-gray-300 hover:text-white">Home</a>
+                        {/*<a href="/" className="text-gray-300 hover:text-white">Home</a>*/}
                         <a href="/admin/logs" className="text-gray-300 hover:text-white">Events log</a>
-                        <button onClick={goToAdminWork} className="text-gray-300 hover:text-emerald-400 font-semibold">
-                            Admin
-                        </button>
+                        {/*<button onClick={goToAdminWork} className="text-gray-300 hover:text-emerald-400 font-semibold">*/}
+                        {/*    Admin*/}
+                        {/*</button>*/}
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="px-4 py-1 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-semibold"
-                    >
-                        Logout
-                    </button>
+                    {/*<button*/}
+                    {/*    onClick={handleLogout}*/}
+                    {/*    className="px-4 py-1 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-semibold"*/}
+                    {/*>*/}
+                    {/*    Logout*/}
+                    {/*</button>*/}
                 </nav>
 
                 {/* 🔹 Tabs */}

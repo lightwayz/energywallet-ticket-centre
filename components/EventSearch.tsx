@@ -4,67 +4,78 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 
-// ✨ Floating energy particles
-function EnergyParticles() {
-    const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
+// ✨ Floating energy particles that drift toward the cursor
+function EnergyParticles({ mouse }: { mouse: { x: number; y: number } }) {
+    type P = { id: number; x: number; y: number; strength: number };
+    const [particles, setParticles] = useState<P[]>([]);
 
     useEffect(() => {
-        setParticles(
-            Array.from({ length: 25 }, (_, i) => ({
-                id: i,
-                x: Math.random() * 100,
-                y: Math.random() * 100,
-            }))
-        );
+        // base positions + per-particle parallax strength (px of drift)
+        const p = Array.from({ length: 25 }, (_, i) => ({
+            id: i,
+            x: Math.random() * 100, // percentage
+            y: Math.random() * 100, // percentage
+            strength: 6 + Math.random() * 14, // 6px - 20px drift range
+        }));
+        setParticles(p);
     }, []);
 
     return (
-        <div className="absolute inset-0 overflow-hidden z-[1]">
-            {particles.map((p) => (
-                <motion.div
-                    key={p.id}
-                    className="absolute w-1.5 h-1.5 rounded-full bg-energy-orange/70 shadow-[0_0_6px_2px_rgba(255,165,0,0.6)]"
-                    style={{
-                        top: `${p.y}%`,
-                        left: `${p.x}%`,
-                    }}
-                    animate={{
-                        y: ["0%", "3%", "-2%", "0%"],
-                        x: ["0%", "2%", "-1%", "0%"],
-                        opacity: [0.8, 1, 0.6, 0.8],
-                    }}
-                    transition={{
-                        duration: 6 + Math.random() * 4,
-                        repeat: Infinity,
-                        repeatType: "mirror",
-                        ease: "easeInOut",
-                    }}
-                />
-            ))}
+        <div className="absolute inset-0 overflow-hidden z-[1] pointer-events-none">
+            {particles.map((p) => {
+                // drift vector (mouse normalized 0..1 -> center at 0.5)
+                const dx = (mouse.x - 0.5) * p.strength;
+                const dy = (mouse.y - 0.5) * p.strength;
+
+                return (
+                    <motion.div
+                        key={p.id}
+                        className="absolute w-1.5 h-1.5 rounded-full bg-energy-orange/70 shadow-[0_0_6px_2px_rgba(255,165,0,0.6)]"
+                        style={{ top: `${p.y}%`, left: `${p.x}%` }}
+                        animate={{ x: dx, y: dy, opacity: 0.9 }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 40,
+                            damping: 18,
+                            mass: 0.6,
+                        }}
+                    />
+                );
+            })}
         </div>
     );
 }
 
 export default function EventSearch() {
     const [loading] = useState(false);
+    const [mouse, setMouse] = useState({ x: 0.5, y: 0.5 });
     const buttonLabel = loading ? "Loading Events..." : "View Events";
 
     return (
-        <div className="relative min-h-screen text-center overflow-hidden flex flex-col items-center justify-center">
+        <div
+            className="relative min-h-screen text-center overflow-hidden flex flex-col items-center justify-center"
+            onMouseMove={(e) => {
+                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                const nx = (e.clientX - rect.left) / rect.width;
+                const ny = (e.clientY - rect.top) / rect.height;
+                setMouse({ x: Math.max(0, Math.min(1, nx)), y: Math.max(0, Math.min(1, ny)) });
+            }}
+            onMouseLeave={() => setMouse({ x: 0.5, y: 0.5 })}
+        >
             {/* 🌌 Fullscreen Static Background */}
             <div
                 className="absolute inset-0 bg-cover bg-center z-0"
                 style={{
                     backgroundImage: "url('/eventback.jpg')",
-                    backgroundAttachment: "fixed", // keeps image static
+                    backgroundAttachment: "fixed",
                     backgroundRepeat: "no-repeat",
                     backgroundSize: "cover",
-                    opacity: 0.4, // subtle visibility
+                    opacity: 0.4,
                 }}
             />
 
-            {/* ✨ Energy Particles */}
-            <EnergyParticles />
+            {/* ✨ Particles follow the cursor */}
+            <EnergyParticles mouse={mouse} />
 
             {/* Dark Overlay */}
             <motion.div
@@ -93,12 +104,12 @@ export default function EventSearch() {
                 <Link href="/events" className="group relative inline-block">
                     <motion.button
                         className="relative px-10 py-4 text-lg rounded-2xl font-semibold border-2 border-energy-orange
-               bg-energy-orange text-energy-black shadow-lg transition-all duration-500 overflow-hidden"
+                       bg-energy-orange text-energy-black shadow-lg transition-all duration-500 overflow-hidden"
                         whileHover={{ scale: 1.05 }}
                     >
                         <span className="relative z-20">{buttonLabel}</span>
 
-                        {/* Hover Transparent Overlay */}
+                        {/* Hover transparent orange overlay */}
                         <span
                             className="absolute inset-0 bg-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                             style={{
@@ -107,10 +118,10 @@ export default function EventSearch() {
                             }}
                         />
 
-                        {/* Shimmer Sweep */}
+                        {/* Shimmer sweep */}
                         <motion.span
                             className="absolute top-0 left-[-70%] w-[40%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent
-                 rounded-2xl opacity-0 group-hover:opacity-80"
+                         rounded-2xl opacity-0 group-hover:opacity-80"
                             whileHover={{ left: "120%" }}
                             transition={{ duration: 1.2, ease: "easeInOut" }}
                         />
