@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,6 +13,7 @@ export default function EventsPage() {
     const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
     const purchaseRef = useRef<HTMLDivElement | null>(null);
 
+    // 🔥 Load events from Firestore
     useEffect(() => {
         const q = query(collection(db, "events"), orderBy("date", "asc"));
         const unsub = onSnapshot(q, (snapshot) => {
@@ -27,7 +28,7 @@ export default function EventsPage() {
         return () => unsub();
     }, []);
 
-    // Smooth scroll to ticket section
+    // 🔁 Auto-scroll to ticket section on selection
     useEffect(() => {
         if (selectedEvent && purchaseRef.current) {
             setTimeout(() => {
@@ -36,7 +37,7 @@ export default function EventsPage() {
         }
     }, [selectedEvent]);
 
-    // Shared 3D motion values
+    // 🌀 3D parallax
     const x = useMotionValue(0.5);
     const y = useMotionValue(0.5);
     const rotateX = useTransform(y, [0, 1], [8, -8]);
@@ -79,29 +80,37 @@ export default function EventsPage() {
             <motion.div className="absolute inset-0 bg-black/60 z-0" />
 
             {/* 🏠 Back to Home */}
-            <div className="relative z-10 w-full max-w-6xl flex justify-between items-center px-6 mb-6">
+            <div className="fixed top-6 left-6 z-30">
                 <Link
                     href="/"
-                    className="px-6 py-2 rounded-xl bg-energy-orange text-energy-black font-semibold shadow-md hover:bg-transparent hover:text-energy-orange border border-energy-orange transition-all duration-300"
+                    className="px-6 py-2 rounded-xl bg-energy-orange text-energy-black font-semibold shadow-md border border-energy-orange
+            hover:bg-transparent hover:text-energy-orange transition-all duration-300 backdrop-blur-sm"
                 >
                     ← Back to Home
                 </Link>
             </div>
 
-            {/* Header */}
-            <h1 className="text-3xl md:text-4xl font-bold text-energy-orange mb-10 text-center relative z-10 drop-shadow-lg">
+            {/* 🧡 Header */}
+            <motion.h1
+                className="text-3xl md:text-4xl font-bold text-energy-orange mb-10 text-center relative z-10 drop-shadow-lg"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+            >
                 Available Events
-            </h1>
+            </motion.h1>
 
-            {/* 🧾 Event Grid */}
-            <div className="relative z-10 grid gap-8 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6">
+            {/* 🎟 Event Cards */}
+            <div className="relative z-10 grid gap-10 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 px-6">
                 {events.map((event) => {
                     const isSelected = selectedEvent?.id === event.id;
                     return (
                         <motion.div
                             key={event.id}
-                            whileHover={{ scale: 1.05, rotateY: 3 }}
-                            transition={{ duration: 0.3 }}
+                            style={{ rotateX, rotateY, transformPerspective: 1000 }}
+                            whileHover={{ scale: 1.07, rotateY: 5, z: 40 }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ type: "spring", stiffness: 120, damping: 15 }}
                             onClick={() => setSelectedEvent(event)}
                             className={`cursor-pointer bg-gray-900/70 backdrop-blur-md p-5 rounded-2xl border
                 ${
@@ -134,7 +143,7 @@ export default function EventsPage() {
                 })}
             </div>
 
-            {/* 🎟 Purchase Section */}
+            {/* 💳 Purchase Ticket Section */}
             {selectedEvent && (
                 <motion.div
                     ref={purchaseRef}
@@ -142,13 +151,32 @@ export default function EventsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="relative z-20 mt-16"
+                    className="relative z-20 mt-16 text-center"
                 >
-                    <PurchaseTicket
-                        eventId={selectedEvent.id}
-                        eventName={selectedEvent.title}
-                        price={selectedEvent.price}
-                    />
+                    {/* 🔥 Single Purchase Ticket Button */}
+                    <motion.div
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.95 }}
+                        animate={{
+                            boxShadow: [
+                                "0 0 12px rgba(255,165,0,0.6)",
+                                "0 0 24px rgba(255,165,0,0.8)",
+                                "0 0 12px rgba(255,165,0,0.6)",
+                            ],
+                        }}
+                        transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            repeatType: "mirror",
+                        }}
+                        className="inline-block"
+                    >
+                        <PurchaseTicket
+                            eventId={selectedEvent.id}
+                            eventName={selectedEvent.title}
+                            price={selectedEvent.price}
+                        />
+                    </motion.div>
                 </motion.div>
             )}
         </motion.div>
