@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 import {
     getFirestore,
     collection,
@@ -30,6 +31,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);  // ✅ Add this line
 export const eventsCollection = collection(db, "events");
+export const functions = getFunctions(app);
 
 // ✅ Add Event — ensure date is always stored as ISO string
 export const addEvent = async (data: any) => {

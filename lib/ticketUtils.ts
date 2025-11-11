@@ -1,3 +1,5 @@
+// noinspection JSUnusedGlobalSymbols
+
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
 
@@ -31,6 +33,7 @@ export async function generateTicketPDF({
     // Generate QR code
     const qrDataUrl = await generateQRCode(reference);
     const qrImage = await pdf.embedPng(qrDataUrl);
+
 
     // Banner
     page.drawRectangle({

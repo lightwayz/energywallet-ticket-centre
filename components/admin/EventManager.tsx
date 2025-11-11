@@ -1,4 +1,4 @@
-// noinspection JSIgnoredPromiseFromCall,DuplicatedCode
+// noinspection JSIgnoredPromiseFromCall
 
 "use client";
 
@@ -19,7 +19,6 @@ import toast from "react-hot-toast";
 import imageCompression from "browser-image-compression";
 import AdminGuard from "@/components/AdminGuard";
 
-// ✅ Props type to match admin/page.tsx usage
 type EventManagerProps = {
     events?: any[];
     onEdit?: (event: any) => void;
@@ -48,7 +47,6 @@ export default function EventManager({
         bannerUrl: "",
     });
 
-    // 🔹 Fetch all events (only if not passed in as props)
     useEffect(() => {
         if (!externalEvents || externalEvents.length === 0) fetchEvents();
         else {
@@ -70,7 +68,7 @@ export default function EventManager({
         router.push("/admin/login");
     };
 
-    // ✅ Banner Upload (Vercel Blob)
+    // ✅ Banner Upload
     const handleBannerUpload = async (file: File) => {
         setUploading(true);
         try {
@@ -107,26 +105,17 @@ export default function EventManager({
         }
     };
 
-    // ✅ Save / Update Event
+    // ✅ Save / Update Event with auto eventLink
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setUploading(true);
 
         try {
-            if (!formData.title.trim()) {
-                toast.error("Please enter an event title");
-                return;
-            }
-            if (!formData.date) {
-                toast.error("Please select a valid date and time");
-                return;
-            }
+            if (!formData.title.trim()) return toast.error("Enter event title");
+            if (!formData.date) return toast.error("Select a valid date and time");
 
             const eventDate = new Date(formData.date);
-            if (isNaN(eventDate.getTime())) {
-                toast.error("Invalid date format.");
-                return;
-            }
+            if (isNaN(eventDate.getTime())) return toast.error("Invalid date format");
 
             const payload = {
                 ...formData,
@@ -138,11 +127,16 @@ export default function EventManager({
                 await updateDoc(doc(db, "events", currentEvent.id), payload);
                 toast.success("✅ Event updated successfully!");
             } else {
-                await addDoc(collection(db, "events"), {
+                const docRef = await addDoc(collection(db, "events"), {
                     ...payload,
                     createdAt: Timestamp.now(),
                 });
-                toast.success("✅ Event created successfully!");
+
+                // 🔗 Generate & attach eventLink
+                const eventLink = `${window.location.origin}/events/${docRef.id}`;
+                await updateDoc(docRef, { eventLink });
+
+                toast.success("✅ Event created successfully with shareable link!");
             }
 
             setFormData({
@@ -187,14 +181,12 @@ export default function EventManager({
         await fetchEvents();
     };
 
-    // Fallbacks for external handlers
     const editHandler = onEdit || handleEdit;
     const deleteHandler = onDelete || handleDelete;
 
     return (
         <AdminGuard>
             <div className="min-h-screen bg-gray-900 text-white p-6">
-                {/* Nav */}
                 <nav className="flex justify-between items-center mb-8 border-b border-gray-700 pb-3">
                     <div className="flex gap-4 text-sm"></div>
                     <button
@@ -205,7 +197,6 @@ export default function EventManager({
                     </button>
                 </nav>
 
-                {/* Event Form */}
                 <form onSubmit={handleSave} className="bg-gray-800 p-6 rounded-xl mb-8">
                     <h2 className="text-xl font-bold mb-4 text-energy-orange">
                         {editMode ? "Edit Event" : "Add New Event"}
@@ -217,39 +208,30 @@ export default function EventManager({
                             placeholder="Event Title"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.title}
-                            onChange={(e) =>
-                                setFormData({ ...formData, title: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         />
                         <input
                             type="text"
                             placeholder="Location"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.location}
-                            onChange={(e) =>
-                                setFormData({ ...formData, location: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         />
                         <input
                             type="datetime-local"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.date}
-                            onChange={(e) =>
-                                setFormData({ ...formData, date: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         />
                         <input
                             type="number"
                             placeholder="Price (₦)"
                             className="p-2 rounded bg-gray-700 text-white"
                             value={formData.price}
-                            onChange={(e) =>
-                                setFormData({ ...formData, price: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                         />
                     </div>
 
-                    {/* Drag & Drop Banner */}
                     <div
                         onDrop={(e) => {
                             e.preventDefault();
@@ -289,9 +271,7 @@ export default function EventManager({
                         placeholder="Event Description"
                         className="w-full mt-4 p-2 rounded bg-gray-700 text-white"
                         value={formData.description}
-                        onChange={(e) =>
-                            setFormData({ ...formData, description: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
 
                     <button
@@ -303,18 +283,11 @@ export default function EventManager({
                                 : "bg-emerald-500 hover:bg-emerald-600"
                         }`}
                     >
-                        {uploading
-                            ? "Saving..."
-                            : editMode
-                                ? "Update Event"
-                                : "Add Event"}
+                        {uploading ? "Saving..." : editMode ? "Update Event" : "Add Event"}
                     </button>
                 </form>
 
-                {/* Event List */}
-                <h2 className="text-2xl font-semibold mb-4 text-energy-orange">
-                    All Events
-                </h2>
+                <h2 className="text-2xl font-semibold mb-4 text-energy-orange">All Events</h2>
                 {loading ? (
                     <p className="text-gray-400">Loading events...</p>
                 ) : (
@@ -339,9 +312,14 @@ export default function EventManager({
                                         ? event.date.toDate().toLocaleString()
                                         : event.date}
                                 </p>
-                                <p className="text-energy-orange font-semibold mt-2">
-                                    ₦{event.price}
-                                </p>
+                                <p className="text-energy-orange font-semibold mt-2">₦{event.price}</p>
+                                {event.eventLink && (
+                                    <p className="mt-2 text-sm text-blue-400 underline break-all">
+                                        <a href={event.eventLink} target="_blank" rel="noopener noreferrer">
+                                            {event.eventLink}
+                                        </a>
+                                    </p>
+                                )}
                                 <div className="flex justify-end gap-2 mt-4">
                                     <button
                                         onClick={() => editHandler(event)}

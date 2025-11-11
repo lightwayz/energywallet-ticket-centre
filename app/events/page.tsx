@@ -170,7 +170,7 @@ export default function EventsPage() {
                                     <div>💰 <span className="text-white">₦{selectedEvent.price}</span></div>
                                 </div>
 
-                                {/* Single Purchase Ticket button with same orange style/effects */}
+                                {/* Single Purchase Ticket button with the same orange style / effects */}
                                 <div ref={purchaseRef} className="text-center">
                                     <motion.div
                                         whileHover={{ scale: 1.06 }}
