@@ -1,3 +1,5 @@
+// noinspection JSIgnoredPromiseFromCall
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -41,7 +43,7 @@ export default function VerifyPageContent() {
                 setEmail(tx.customerEmail || "");
                 setStatus("success");
 
-                // optional: fetch admin-created event link
+                // optional: fetch an admin-created event link
                 const eventId = tx.product;
                 if (eventId) {
                     const docRef = doc(db, "events", eventId);
@@ -78,8 +80,7 @@ export default function VerifyPageContent() {
             const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
 
             // local download
-            // @ts-ignore
-            const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+            const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -107,14 +108,15 @@ export default function VerifyPageContent() {
 
         try {
             const reference = transaction.paymentReference;
-            const bytes = await generateTicketPDF({
+            const pdfBytes = await generateTicketPDF({
                 name: transaction.customerName || "Guest User",
                 eventName: transaction.product ?? "EnergyWallet Event",
                 reference,
             });
 
-            // @ts-ignore
-            const blob = new Blob([bytes.buffer], { type: "application/pdf" });
+
+
+            const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
