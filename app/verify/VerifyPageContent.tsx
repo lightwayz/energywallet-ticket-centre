@@ -1,5 +1,3 @@
-// noinspection JSIgnoredPromiseFromCall
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -18,8 +16,8 @@ export default function VerifyPageContent() {
     const router = useRouter();
     const [status, setStatus] = useState<"loading" | "success" | "failed">("loading");
     const [transaction, setTransaction] = useState<any>(null);
-    const [eventLink, setEventLink] = useState<string | null>(null);
     const [email, setEmail] = useState("");
+    const [eventLink, setEventLink] = useState<string | null>(null);
     const [downloading, setDownloading] = useState(false);
     const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -43,7 +41,7 @@ export default function VerifyPageContent() {
                 setEmail(tx.customerEmail || "");
                 setStatus("success");
 
-                // fetch admin-generated event link
+                // optional: fetch admin-created event link
                 const eventId = tx.product;
                 if (eventId) {
                     const docRef = doc(db, "events", eventId);
@@ -76,8 +74,8 @@ export default function VerifyPageContent() {
             const name = transaction.customerName || "Guest User";
             const eventName = eventLink ?? transaction.product ?? "EnergyWallet Event";
 
-            const pdfBytes: Uint8Array = await generateTicketPDF({ name, eventName, reference });
-            const pdfBase64 = btoa(Array.from(pdfBytes).map((b) => String.fromCharCode(b)).join(""));
+            const pdfBytes = await generateTicketPDF({ name, eventName, reference });
+            const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
 
             // local download
             // @ts-ignore
@@ -97,7 +95,7 @@ export default function VerifyPageContent() {
             else toast.error("Ticket downloaded, but email failed.");
         } catch (err) {
             console.error(err);
-            toast.error("Error sending/downloading ticket.");
+            toast.error("Something went wrong while sending/downloading the ticket.");
         } finally {
             setSendingEmail(false);
         }
@@ -106,12 +104,12 @@ export default function VerifyPageContent() {
     const handleDownloadPDF = async () => {
         if (!transaction) return;
         setDownloading(true);
+
         try {
             const reference = transaction.paymentReference;
-            const eventName = eventLink ?? transaction.product ?? "EnergyWallet Event";
             const bytes = await generateTicketPDF({
                 name: transaction.customerName || "Guest User",
-                eventName,
+                eventName: transaction.product ?? "EnergyWallet Event",
                 reference,
             });
 
@@ -126,7 +124,7 @@ export default function VerifyPageContent() {
 
             toast.success("🎟 Ticket downloaded successfully!");
         } catch (err) {
-            console.error(err);
+            console.error("PDF generation error:", err);
             toast.error("Failed to generate ticket PDF.");
         } finally {
             setDownloading(false);
