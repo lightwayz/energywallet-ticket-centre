@@ -10,12 +10,11 @@ function EnergyParticles({ mouse }: { mouse: { x: number; y: number } }) {
     const [particles, setParticles] = useState<P[]>([]);
 
     useEffect(() => {
-        // base positions + per-particle parallax strength (px of drift)
         const p = Array.from({ length: 25 }, (_, i) => ({
             id: i,
-            x: Math.random() * 100, // percentage
-            y: Math.random() * 100, // percentage
-            strength: 6 + Math.random() * 14, // 6px - 20px drift range
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            strength: 6 + Math.random() * 14,
         }));
         setParticles(p);
     }, []);
@@ -23,7 +22,6 @@ function EnergyParticles({ mouse }: { mouse: { x: number; y: number } }) {
     return (
         <div className="absolute inset-0 overflow-hidden z-[1] pointer-events-none">
             {particles.map((p) => {
-                // drift vector (mouse normalized 0..1 -> center at 0.5)
                 const dx = (mouse.x - 0.5) * p.strength;
                 const dy = (mouse.y - 0.5) * p.strength;
 
@@ -62,7 +60,16 @@ export default function EventSearch() {
             }}
             onMouseLeave={() => setMouse({ x: 0.5, y: 0.5 })}
         >
-            {/* 🌌 Fullscreen Static Background */}
+
+            {/* 🌅 Unified EnergyWallet Gradient Background */}
+            <div
+                className="absolute inset-0 z-0"
+                style={{
+                    background: "linear-gradient(180deg, #ffffff 0%, #ffe0c7 40%, #ff8c3a 100%)",
+                }}
+            />
+
+            {/* eventback overlay image */}
             <div
                 className="absolute inset-0 bg-cover bg-center z-0"
                 style={{
@@ -70,18 +77,18 @@ export default function EventSearch() {
                     backgroundAttachment: "fixed",
                     backgroundRepeat: "no-repeat",
                     backgroundSize: "cover",
-                    opacity: 0.4,
+                    opacity: 0.50,
                 }}
             />
 
-            {/* ✨ Particles follow the cursor */}
+            {/* ✨ Particles */}
             <EnergyParticles mouse={mouse} />
 
             {/* Dark Overlay */}
             <motion.div
                 className="absolute inset-0 bg-black/45 z-[2]"
                 initial={{ opacity: 0.4 }}
-                animate={{ opacity: 0.45 }}
+                animate={{ opacity: 0.5 }}
                 transition={{ duration: 1.2 }}
             />
 
@@ -100,16 +107,15 @@ export default function EventSearch() {
                     Discover electrifying experiences near you — powered by EnergyWallet.
                 </p>
 
-                {/* View Events Button */}
                 <Link href="/events" className="group relative inline-block">
                     <motion.button
                         className="relative px-10 py-4 text-lg rounded-2xl font-semibold border-2 border-energy-orange
-                       bg-energy-orange text-energy-black shadow-lg transition-all duration-500 overflow-hidden"
+                        bg-energy-orange text-energy-black shadow-lg transition-all duration-500 overflow-hidden"
                         whileHover={{ scale: 1.05 }}
                     >
                         <span className="relative z-20">{buttonLabel}</span>
 
-                        {/* Hover transparent orange overlay */}
+                        {/* Hover glaze */}
                         <span
                             className="absolute inset-0 bg-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                             style={{
@@ -118,10 +124,10 @@ export default function EventSearch() {
                             }}
                         />
 
-                        {/* Shimmer sweep */}
+                        {/* Shimmer */}
                         <motion.span
                             className="absolute top-0 left-[-70%] w-[40%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent
-                         rounded-2xl opacity-0 group-hover:opacity-80"
+                            rounded-2xl opacity-0 group-hover:opacity-80"
                             whileHover={{ left: "120%" }}
                             transition={{ duration: 1.2, ease: "easeInOut" }}
                         />

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/lib/authContext";
+import ClientWrapper from "@/app/ClientWrapper";
 import React from "react";
-import ClientWrapper from "@/app/ClientWrapper"; // ✅ use this
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,11 +19,15 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" className="bg-energy-black text-white">
+        <html lang="en">
+        {/* Body inherits gradient from globals.css */}
         <body className={`${inter.className} min-h-screen`}>
         <AuthProvider>
             {children}
-            <ClientWrapper children={undefined} /> {/* ✅ mounted only in browser */}
+
+            {/* Mounted only on a client */}
+            <ClientWrapper />
+
             <Toaster position="top-center" />
         </AuthProvider>
         </body>

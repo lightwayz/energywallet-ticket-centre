@@ -4,6 +4,11 @@ import { motion } from "framer-motion";
 import { Mail, Twitter, Instagram } from "lucide-react";
 
 export default function Footer() {
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     return (
         <motion.footer
             id="contact"
@@ -11,28 +16,61 @@ export default function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="bg-black/30 backdrop-blur-md border-t border-gray-800 text-gray-400 mt-16"
+            className="bg-black text-gray-400 border-t border-gray-800 mt-16"
         >
-            <div className="container mx-auto px-6 py-10 text-center space-y-6">
-                <h3 className="text-xl font-semibold text-energy-orange">
-                    Stay Connected
-                </h3>
+            <div className="container mx-auto px-6 py-10 space-y-10">
 
-                <div className="flex justify-center gap-6 text-gray-400">
-                    <a href="mailto:support@energywallet.io" className="hover:text-energy-orange transition">
-                        <Mail size={20} />
-                    </a>
-                    <a href="https://twitter.com/energywallet" className="hover:text-energy-orange transition">
-                        <Twitter size={20} />
-                    </a>
-                    <a href="https://instagram.com/energywallet" className="hover:text-energy-orange transition">
-                        <Instagram size={20} />
-                    </a>
+                {/* TOP ROW — Logo Left */}
+                <div className="flex justify-between items-center">
+
+                    {/* Clickable Logo + Text */}
+                    <button
+                        onClick={scrollToTop}
+                        className="hover:opacity-80 transition flex items-center gap-3"
+                    >
+                        <img
+                            src="/Energy_Wallet.png"
+                            alt="EnergyWallet Logo"
+                            className="w-12 h-auto"
+                        />
+
+                        <span className="text-lg font-semibold tracking-wide text-energy-orange">
+                            EnergyWallet
+                        </span>
+                    </button>
                 </div>
 
-                <p className="text-xs text-gray-500">
-                    © {new Date().getFullYear()} EnergyWallet Ticket Centre · All rights reserved.
-                </p>
+                {/* Stay Connected Section */}
+                <div className="text-center space-y-6">
+                    <h3 className="text-xl font-semibold text-energy-orange">
+                        Stay Connected
+                    </h3>
+
+                    <div className="flex justify-center gap-6 text-gray-400">
+                        <a
+                            href="mailto:support@energywallet.io"
+                            className="hover:text-energy-orange transition"
+                        >
+                            <Mail size={20} />
+                        </a>
+                        <a
+                            href="https://twitter.com/energywallet"
+                            className="hover:text-energy-orange transition"
+                        >
+                            <Twitter size={20} />
+                        </a>
+                        <a
+                            href="https://instagram.com/energywallet"
+                            className="hover:text-energy-orange transition"
+                        >
+                            <Instagram size={20} />
+                        </a>
+                    </div>
+
+                    <p className="text-xs text-gray-500">
+                        © {new Date().getFullYear()} EnergyWallet Ticket Centre · All rights reserved.
+                    </p>
+                </div>
             </div>
         </motion.footer>
     );

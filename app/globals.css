@@ -1,50 +1,65 @@
 @import "tailwindcss";
 
+/* ----------------------------------------
+   ENERGYWALLET BRAND SYSTEM
+----------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-white: #ffffff;
+  --brand-cream: #ffe0c7;     /* soft peach */
+  --brand-orange: #ff8c3a;    /* signature orange */
+  --brand-black: #000000;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ----------------------------------------
+   GLOBAL BODY (TOP → MIDDLE IS WHITE)
+----------------------------------------- */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-html, body {
-  background-color: #0a0a0a; /* true black or dark gray */
-  color: white;
-  min-height: 100%;
+  font-family: 'Poppins', sans-serif;
+  background: var(--brand-white);
+  color: #1a1a1a;
   margin: 0;
   padding: 0;
 }
 
 :root {
-  color-scheme: dark; /* tell browsers you’re dark mode native */
+  color-scheme: light;
 }
 
-@keyframes slow-pan {
-  0% { background-position: center top; }
-  50% { background-position: center bottom; }
-  100% { background-position: center top; }
+/* ----------------------------------------
+   BRAND UTILITY CLASSES
+----------------------------------------- */
+
+/* Section: pure white */
+.section-white {
+  background: var(--brand-white);
 }
 
-.animate-slow-pan {
-  animation: slow-pan 40s ease-in-out infinite;
+/* Section: white → cream → orange gradient */
+.section-orange-gradient {
+  background: linear-gradient(
+          180deg,
+          var(--brand-white) 0%,
+          var(--brand-cream) 40%,
+          var(--brand-orange) 100%
+  );
 }
+
+/* Section: solid orange */
+.section-orange {
+  background: var(--brand-orange);
+}
+
+/* Footer: black */
+.section-black {
+  background: var(--brand-black);
+  color: #e5e5e5;
+}
+
+/* ----------------------------------------
+   OPTIONAL EFFECTS
+----------------------------------------- */
 
 @keyframes shimmerMove {
   0% { left: -75%; }
@@ -54,4 +69,3 @@ html, body {
 .group:hover .bg-gradient-to-r {
   animation: shimmerMove 1.5s ease-in-out forwards;
 }
-
