@@ -29,7 +29,7 @@ function CheckoutContent() {
     const GlowingButton = ({ children }: any) => (
         <motion.button
             animate={{
-                rotate: 360,
+                rotate: 0,
                 transition: { repeat: Infinity, ease: "linear", duration: 6 },
             }}
             whileHover={{ scale: 1.07 }}
