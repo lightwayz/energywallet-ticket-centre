@@ -1,30 +1,66 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { motion, easeOut } from "framer-motion";
-import NextDynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 
-// Load ThreeScene safely
-const ThreeScene = NextDynamic(() => import("@/components/ThreeScene"), {
+// Safe dynamic import (NO conflict with local variable names)
+const ThreeScene = dynamicImport(() => import("@/components/ThreeScene"), {
     ssr: false,
 });
 
+// 🔥 ENERGYWALLET GLOWING BUTTON (Reusable)
+const GlowingButton = ({
+                           children,
+                           loading,
+                       }: {
+    children: any;
+    loading?: boolean;
+}) => (
+    <motion.button
+        type="submit"
+        disabled={loading}
+        animate={{
+            rotate: 360,
+            transition: { repeat: Infinity, ease: "linear", duration: 6 },
+        }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.25, ease: easeOut }}
+        className="
+            relative px-10 py-4 rounded-full font-semibold text-white w-full mt-4
+            bg-gradient-to-r from-[#FF7A00] via-[#FFA500] to-[#FF7A00]
+            shadow-[0_0_25px_rgba(255,165,0,0.5)]
+            border border-[#FFB84D]/40
+            overflow-hidden select-none
+            disabled:opacity-50
+        "
+    >
+        {/* Glow background layer */}
+        <span
+            className="
+                absolute inset-0 rounded-full
+                bg-gradient-to-r from-[#FF7A00]/40 to-[#FFA500]/40
+                blur-xl opacity-70 animate-pulse
+            "
+        />
+
+        {/* Button text */}
+        <span className="relative z-10 tracking-wide">
+            {loading ? "Processing..." : children}
+        </span>
+    </motion.button>
+);
+
 export default function CheckoutPage() {
-    return (
-        <Suspense fallback={<div className="text-center p-10">Loading...</div>}>
-            <CheckoutContent />
-        </Suspense>
-    );
-}
-
-function CheckoutContent() {
-    const params = useSearchParams();
     const router = useRouter();
+    const params = useSearchParams();
 
-    const eventId = params.get("eventId") || "";
-    const eventName = params.get("eventName") || "Selected Event";
-    const price = Number(params.get("price")) || 0;
+    // 🔹 Safe param extraction
+    const eventId = params.get("eventId") ?? "";
+    const eventName = params.get("eventName") ?? "Selected Event";
+    const price = Number(params.get("price") ?? "0");
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -33,75 +69,55 @@ function CheckoutContent() {
         phone: "",
     });
 
-    /** PAYMENT SUBMIT */
     const handleSubmit = async (e: any) => {
         e.preventDefault();
         setLoading(true);
 
+        const payload = {
+            buyerName: formData.fullName,
+            buyerEmail: formData.email,
+            buyerPhone: formData.phone,
+            eventId,
+            eventName,
+            amount: price,
+        };
+
+        console.log("📦 Sending payload:", payload);
+
         const res = await fetch("/api/payment/init", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                ...formData,
-                eventId,
-                eventName,
-                amount: price,
-            }),
+            body: JSON.stringify(payload),
         });
 
         const data = await res.json();
+        console.log("🔵 Monnify response:", data);
 
-        if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
-        else alert("Payment failed.");
+        if (data?.checkoutUrl) {
+            window.location.href = data.checkoutUrl;
+        } else {
+            alert("Payment failed. " + (data?.message || ""));
+        }
 
         setLoading(false);
     };
 
-    /** 🔥 Glowing animated button (same as TicketCentre) */
-    const GlowingButton = ({ children }: any) => (
-        <motion.button
-            type="submit"
-            animate={{
-                rotate: 0,
-                transition: { repeat: Infinity, ease: "linear", duration: 6 },
-            }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ duration: 0.25, ease: easeOut }}
-            className="
-                relative px-10 py-4 rounded-full font-semibold text-white w-full
-                bg-gradient-to-r from-[#FF7A00] via-[#FFA500] to-[#FF7A00]
-                shadow-[0_0_25px_rgba(255,165,0,0.5)]
-                border border-[#FFB84D]/40
-                cursor-pointer select-none overflow-hidden
-            "
-        >
-            <span
-                className="
-                    absolute inset-0 rounded-full
-                    bg-gradient-to-r from-[#FF7A00]/40 to-[#FFA500]/40
-                    blur-xl opacity-70 animate-pulse
-                "
-            />
-            <span className="relative z-10 tracking-wide">{children}</span>
-        </motion.button>
-    );
 
     return (
         <div className="min-h-screen flex flex-col bg-[#FAF7F2]">
 
-            {/* HEADER */}
+            {/* 🔸 3D HEADER */}
             <div className="w-full bg-white py-12 shadow-md border-b border-gray-100">
                 <div className="max-w-5xl mx-auto transition-transform duration-700 ease-out">
                     <ThreeScene />
                 </div>
             </div>
 
-            {/* EVENT SUMMARY */}
+            {/* 🔸 EVENT SUMMARY */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6 }}
                 className="text-center mt-10"
             >
                 <h1 className="text-3xl font-bold text-black">
@@ -117,12 +133,12 @@ function CheckoutContent() {
                 </p>
             </motion.div>
 
-            {/* FORM CARD */}
+            {/* 🔸 FORM CARD */}
             <div className="flex justify-center mt-12 px-6 mb-20">
                 <motion.div
-                    initial={{ opacity: 0, y: 25 }}
+                    initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    transition={{ duration: 0.6, ease: easeOut }}
                     className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-2xl border border-gray-200"
                 >
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -172,12 +188,12 @@ function CheckoutContent() {
                             />
                         </div>
 
-                        {/* EnergyWallet Button */}
-                        <GlowingButton>
-                            {loading ? "Processing..." : "Continue to Payment"}
+                        {/* 🔥 MATCHING GLOWING BUTTON */}
+                        <GlowingButton loading={loading}>
+                            Continue to Payment
                         </GlowingButton>
 
-                        {/* Cancel / Back */}
+                        {/* Cancel link */}
                         <p
                             onClick={() => router.back()}
                             className="mt-4 text-center text-gray-600 hover:text-black cursor-pointer underline"
