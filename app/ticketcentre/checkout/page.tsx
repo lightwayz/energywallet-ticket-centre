@@ -1,13 +1,24 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion, easeOut } from "framer-motion";
-import dynamic from "next/dynamic";
+import NextDynamic from "next/dynamic";
 
-const ThreeScene = dynamic(() => import("@/components/ThreeScene"), { ssr: false });
+// Load ThreeScene safely
+const ThreeScene = NextDynamic(() => import("@/components/ThreeScene"), {
+    ssr: false,
+});
 
 export default function CheckoutPage() {
+    return (
+        <Suspense fallback={<div className="text-center p-10">Loading...</div>}>
+            <CheckoutContent />
+        </Suspense>
+    );
+}
+
+function CheckoutContent() {
     const params = useSearchParams();
     const router = useRouter();
 
@@ -22,6 +33,7 @@ export default function CheckoutPage() {
         phone: "",
     });
 
+    /** PAYMENT SUBMIT */
     const handleSubmit = async (e: any) => {
         e.preventDefault();
         setLoading(true);
@@ -38,15 +50,17 @@ export default function CheckoutPage() {
         });
 
         const data = await res.json();
+
         if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
         else alert("Payment failed.");
 
         setLoading(false);
     };
 
-    /** 🔥 Reusable glowing rotating button */
+    /** 🔥 Glowing animated button (same as TicketCentre) */
     const GlowingButton = ({ children }: any) => (
         <motion.button
+            type="submit"
             animate={{
                 rotate: 0,
                 transition: { repeat: Infinity, ease: "linear", duration: 6 },
@@ -54,16 +68,14 @@ export default function CheckoutPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.25, ease: easeOut }}
-            type="submit"
             className="
-                relative px-10 py-4 rounded-full font-semibold text-white
+                relative px-10 py-4 rounded-full font-semibold text-white w-full
                 bg-gradient-to-r from-[#FF7A00] via-[#FFA500] to-[#FF7A00]
                 shadow-[0_0_25px_rgba(255,165,0,0.5)]
                 border border-[#FFB84D]/40
-                w-full mt-4 tracking-wide
+                cursor-pointer select-none overflow-hidden
             "
         >
-            {/* Glow pulse layer */}
             <span
                 className="
                     absolute inset-0 rounded-full
@@ -71,22 +83,21 @@ export default function CheckoutPage() {
                     blur-xl opacity-70 animate-pulse
                 "
             />
-
-            <span className="relative z-10">{children}</span>
+            <span className="relative z-10 tracking-wide">{children}</span>
         </motion.button>
     );
 
     return (
         <div className="min-h-screen flex flex-col bg-[#FAF7F2]">
 
-            {/* 🔹 3D Header */}
+            {/* HEADER */}
             <div className="w-full bg-white py-12 shadow-md border-b border-gray-100">
                 <div className="max-w-5xl mx-auto transition-transform duration-700 ease-out">
                     <ThreeScene />
                 </div>
             </div>
 
-            {/* 🔹 Event Summary */}
+            {/* EVENT SUMMARY */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -106,7 +117,7 @@ export default function CheckoutPage() {
                 </p>
             </motion.div>
 
-            {/* 🔹 FORM CARD */}
+            {/* FORM CARD */}
             <div className="flex justify-center mt-12 px-6 mb-20">
                 <motion.div
                     initial={{ opacity: 0, y: 25 }}
@@ -161,12 +172,12 @@ export default function CheckoutPage() {
                             />
                         </div>
 
-                        {/* 🔥 Glowing EnergyWallet Button */}
+                        {/* EnergyWallet Button */}
                         <GlowingButton>
                             {loading ? "Processing..." : "Continue to Payment"}
                         </GlowingButton>
 
-                        {/* Cancel Link */}
+                        {/* Cancel / Back */}
                         <p
                             onClick={() => router.back()}
                             className="mt-4 text-center text-gray-600 hover:text-black cursor-pointer underline"
@@ -177,7 +188,7 @@ export default function CheckoutPage() {
                 </motion.div>
             </div>
 
-            {/* 🔶 FOOTER */}
+            {/* FOOTER */}
             <div className="bg-energy-orange text-black text-center py-6 mt-auto font-semibold shadow-inner">
                 Powered by EnergyWallet
             </div>
