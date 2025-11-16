@@ -69,3 +69,19 @@ body {
 .group:hover .bg-gradient-to-r {
   animation: shimmerMove 1.5s ease-in-out forwards;
 }
+.parallax-page-wrapper {
+  position: relative;
+  overflow-x: hidden;
+}
+
+.parallax-content {
+  margin-top: 180px; /* height of banner → pushes content BELOW header */
+
+  /* ULTRA PARALLAX SCROLL */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.parallax-content > * {
+  will-change: transform;
+}

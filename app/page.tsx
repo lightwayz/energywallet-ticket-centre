@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 
 export default function Home() {
     return (
+        <div className="parallax-page-wrapper">
         <main className="min-h-screen bg-energy-dark text-white">
             <Header />
 
@@ -19,5 +20,6 @@ export default function Home() {
 
             <Footer />
         </main>
+        </div>
     );
 }
