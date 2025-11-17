@@ -1,3 +1,5 @@
+// noinspection JSIgnoredPromiseFromCall
+
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -111,6 +113,21 @@ export default function EventsPage() {
                     </motion.div>
                 ))}
             </div>
+
+            {selectedEvent && (
+                <button
+                    onClick={() => {
+                        navigator.share({
+                            title: selectedEvent.title,
+                            text: "Buy your ticket now!",
+                            url: `${window.location.origin}/events/${selectedEvent.id}`,
+                        });
+                    }}
+                    className="mt-6 text-energy-orange underline hover:text-white"
+                >
+                    Share this Event
+                </button>
+            )}
 
             {/* Holographic Preview Modal */}
             <AnimatePresence>

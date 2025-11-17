@@ -2,7 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from "firebase/auth";
+import {
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { isWhitelistedAdmin } from "@/lib/adminWhitelist";
 import toast from "react-hot-toast";
@@ -19,16 +23,16 @@ export default function AdminLoginPage() {
 
         try {
             await setPersistence(auth, browserLocalPersistence);
+
             const { user } = await signInWithEmailAndPassword(auth, email, password);
 
-            // ✅ Whitelist validation
             if (!isWhitelistedAdmin(user.email)) {
                 toast.error("Access denied. Not an admin.");
                 return;
             }
 
             localStorage.setItem("adminEmail", user.email!);
-            toast.success("Welcome, Admin!");
+            toast.success("Welcome Admin!");
             router.push("/admin");
         } catch (err: any) {
             toast.error(err.message || "Login failed");
@@ -40,22 +44,21 @@ export default function AdminLoginPage() {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
             <h1 className="text-2xl font-bold mb-4">Admin Login</h1>
+
             <form onSubmit={handleLogin} className="w-80 space-y-4">
                 <input
                     type="email"
                     placeholder="Email"
-                    className="w-full p-2 bg-gray-800 rounded"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
+                    className="w-full p-3 rounded bg-gray-800"
                 />
                 <input
                     type="password"
                     placeholder="Password"
-                    className="w-full p-2 bg-gray-800 rounded"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
+                    className="w-full p-3 rounded bg-gray-800"
                 />
                 <button
                     type="submit"
