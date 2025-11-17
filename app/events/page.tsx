@@ -9,6 +9,8 @@ import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import PurchaseTicket from "@/components/PurchaseTicket";
+import HoloShareButton from "@/components/HoloShareButton";
+
 
 export default function EventsPage() {
     const [events, setEvents] = useState<any[]>([]);
@@ -104,6 +106,14 @@ export default function EventsPage() {
                                 className="object-cover transition-transform duration-700 ease-out hover:scale-110"
                                 sizes="(max-width: 768px) 100vw, 33vw"
                             />
+                            <div className="flex justify-between items-center mt-3">
+                                <HoloShareButton
+                                    url={`${window.location.origin}/events/${event.id}`}
+                                    title={event.title}
+                                />
+                            </div>
+
+
                         </div>
 
                         <h2 className="text-xl font-semibold text-energy-orange">{event.title}</h2>

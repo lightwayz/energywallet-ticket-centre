@@ -230,6 +230,8 @@ export default function EventManager({
                             value={formData.price}
                             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                         />
+
+
                     </div>
 
                     <div
